@@ -1,0 +1,20 @@
+[package]
+name = "srs_exporter"
+version = "0.0.1"
+authors = ["azusachino <azusa146@gmail.com>"]
+edition = "2021"
+readme = "README.md"
+license-file = "LICENSE"
+repository = "https://github.com/azusachino/srs-exporter"
+
+[dependencies]
+anyhow = "1.0.55"
+chrono = { version = "0.4.19", features = ["serde"] }
+json = "0.12.4"
+prometheus = "0.13.0"
+toml = "0.5.8"
+tokio = { version = "1.17.0", features = ["full"] }
+
+[profile.dev]
+opt-level = 0
+overflow-checks = false # Disable integer overflow checks.
