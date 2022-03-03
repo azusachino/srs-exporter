@@ -1,0 +1,19 @@
+{
+  "code": 0,
+  "server": "vid-f668357",
+  "clients": [
+    {
+      "id": "691601ox",
+      "vhost": "vid-2399okx",
+      "stream": "vid-7wc792l",
+      "ip": "10.3.24.92",
+      "pageUrl": "",
+      "swfUrl": "",
+      "tcUrl": "rtmp://172.31.103.161:1935/live/2001",
+      "url": "/live/2001/ythu",
+      "type": "rtmp-play",
+      "publish": false,
+      "alive": 17357.49
+    }
+  ]
+}

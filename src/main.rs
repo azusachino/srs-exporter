@@ -1,20 +1,33 @@
 use anyhow::Result;
 use chrono::prelude::Local;
 use prometheus::Registry;
-use srs_exporter::{Collector, StreamUsage};
+use srs_exporter::{parse_config, SrsExporterConfig, StreamUsage, CURRENT_VERSION};
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 #[tokio::main]
 async fn main() {
+    let toml_config = parse_config().unwrap();
     let addr = "127.0.0.1:9007";
     let listener = TcpListener::bind(addr.clone()).await.unwrap();
 
-    println!("Server is listening {}", addr);
+    println!(
+        "Srs Exporter is listening {}, Current Version is {}",
+        addr, CURRENT_VERSION
+    );
+    // spawn a task to check srs and report to nacos
+    let config_clone = toml_config.clone();
+    tokio::spawn(async move {
+        loop {
+            println!("report to nacos, {:?}", config_clone);
+            // process every two seconds
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+    });
 
     loop {
         let (mut socket, _) = listener.accept().await.unwrap();
 
-        let fake_html_content = collect_metrics().await.unwrap();
+        let fake_html_content = collect_metrics(&toml_config).await.unwrap();
         // let fake_html_content = "Hello World";
         let fake_html = format!(
             "<html>
@@ -49,8 +62,15 @@ Accept-Ranges: bytes
     }
 }
 
-async fn collect_metrics() -> Result<String> {
+async fn collect_metrics(srs_config: &SrsExporterConfig) -> Result<String> {
     let r = Registry::new();
-    let su = StreamUsage::new(r);
-    Ok(su.collect().unwrap())
+    let su = StreamUsage::new(r, srs_config);
+    Ok(su.collect().await?)
+}
+
+#[allow(unused)]
+// curl -X POST 'http://127.0.0.1:8848/nacos/v1/ns/instance?serviceName=nacos.naming.serviceName&ip=20.18.7.10&port=8080'
+async fn report_nacos() -> Result<()> {
+    todo!();
+    Ok(())
 }
