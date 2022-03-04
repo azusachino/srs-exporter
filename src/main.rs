@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::prelude::Local;
 use prometheus::Registry;
-use srs_exporter::{parse_config, NacosClient, SrsConfig, StreamUsage, CURRENT_VERSION};
+use srs_exporter::{parse_config, NacosClient, SrsConfig, StreamCollector, CURRENT_VERSION};
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 #[tokio::main]
@@ -68,6 +68,6 @@ Accept-Ranges: bytes
 
 async fn collect_metrics(srs_config: &SrsConfig) -> Result<String> {
     let r = Registry::new();
-    let su = StreamUsage::new(r, srs_config);
+    let su = StreamCollector::new(r, srs_config);
     Ok(su.collect().await?)
 }

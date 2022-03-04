@@ -6,7 +6,7 @@ use anyhow::Result;
 use serde_derive::Deserialize;
 
 mod collector;
-pub use collector::StreamUsage;
+pub use collector::StreamCollector;
 
 mod nacos;
 pub use nacos::NacosClient;
@@ -106,8 +106,6 @@ pub fn parse_config() -> Result<SrsExporterConfig> {
             }
         }
     }
-
-    println!("{:?}", toml_config);
 
     Ok(toml_config)
 }
