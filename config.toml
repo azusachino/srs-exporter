@@ -1,0 +1,10 @@
+[srs]
+host = "localhost"
+http_port = "1985"
+rtmp_port = "1935"
+
+[nacos]
+host = "localhost"
+port = "8848"
+namespace_id = "public"
+group_name = "public"

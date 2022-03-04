@@ -1,0 +1,27 @@
+{
+  "code": 0,
+  "server": "vid-f668357",
+  "streams": [
+    {
+      "id": "vid-380iek3",
+      "name": "undefined",
+      "vhost": "vid-2399okx",
+      "app": "live/undefined",
+      "live_ms": 1646307988105,
+      "clients": 0,
+      "frames": 0,
+      "send_bytes": 12564,
+      "recv_bytes": 10584,
+      "kbps": {
+        "recv_30s": 0,
+        "send_30s": 0
+      },
+      "publish": {
+        "active": false,
+        "cid": ""
+      },
+      "video": null,
+      "audio": null
+    }
+  ]
+}

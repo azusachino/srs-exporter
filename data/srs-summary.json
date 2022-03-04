@@ -1,0 +1,49 @@
+{
+  "code": 0,
+  "server": "vid-f668357",
+  "data": {
+    "ok": true,
+    "now_ms": 1646308001512,
+    "self": {
+      "version": "4.0.206",
+      "pid": 1,
+      "ppid": 0,
+      "argv": "./objs/srs -c conf/docker.conf",
+      "cwd": "/usr/local/srs",
+      "mem_kbyte": 10628,
+      "mem_percent": 0,
+      "cpu_percent": 0,
+      "srs_uptime": 17935
+    },
+    "system": {
+      "cpu_percent": 0.06,
+      "disk_read_KBps": 0,
+      "disk_write_KBps": 482,
+      "disk_busy_percent": 0,
+      "mem_ram_kbyte": 196492312,
+      "mem_ram_percent": 0.57,
+      "mem_swap_kbyte": 0,
+      "mem_swap_percent": 0,
+      "cpus": 40,
+      "cpus_online": 40,
+      "uptime": 13920338.96,
+      "ilde_time": 526264919.8,
+      "load_1m": 1.17,
+      "load_5m": 1.54,
+      "load_15m": 2.1,
+      "net_sample_time": 1646307995122,
+      "net_recv_bytes": 0,
+      "net_send_bytes": 0,
+      "net_recvi_bytes": 7401969,
+      "net_sendi_bytes": 6401245,
+      "srs_sample_time": 1646308001123,
+      "srs_recv_bytes": 6692718,
+      "srs_send_bytes": 5946749,
+      "conn_sys": 3302,
+      "conn_sys_et": 3,
+      "conn_sys_tw": 3,
+      "conn_sys_udp": 1,
+      "conn_srs": 3
+    }
+  }
+}
