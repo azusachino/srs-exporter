@@ -9,6 +9,11 @@ tempt to be a srs exporter
 ## run srs
 
 ```sh
-docker run --rm -it -p 1935:1935 -p 1985:1985 -p 8080:8080 \
-    registry.cn-hangzhou.aliyuncs.com/ossrs/srs:4 ./objs/srs -c conf/docker.conf
+docker run --rm -it -p 1935:1935 -p 1985:1985 -p 8080:8080 registry.cn-hangzhou.aliyuncs.com/ossrs/srs:4 ./objs/srs -c conf/docker.conf
+```
+
+## run nacos
+
+```sh
+docker run --rm -it -p 8848:8848 -e PREFER_HOST_MODE=hostname -e MODE=standalone nacos/nacos-server:v2.0.4
 ```

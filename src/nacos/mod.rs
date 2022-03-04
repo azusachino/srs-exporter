@@ -1,71 +1,101 @@
-// use crate::{NacosConfig, SrsConfig, SrsExporterConfig};
-// use anyhow::Result;
-// use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
+use crate::SrsExporterConfig;
+use anyhow::Result;
+use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
-// const DEFAULT_SERVICE_NAME: &str = "srs";
-// const FRAGMENT: &AsciiSet = &CONTROLS
-//     .add(b' ')
-//     .add(b'"')
-//     .add(b'{')
-//     .add(b'}')
-//     .add(b':')
-//     .add(b',');
+const DEFAULT_SERVICE_NAME: &str = "srs";
+const FRAGMENT: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'{')
+    .add(b'}')
+    .add(b':')
+    .add(b',');
 
-// #[derive(Clone, Debug)]
-// pub struct NacosClient<'a> {
-//     nacos_config: &'a NacosConfig,
-//     srs_config: &'a SrsConfig,
-// }
+/**
+ * Nacos Client
+ */
+#[derive(Clone, Debug)]
+pub struct NacosClient {
+    srs_exporter_config: SrsExporterConfig,
+}
 
-// impl NacosClient {
-//     pub fn new(srs_exporter_config: SrsExporterConfig) -> Self {
-//         return Self {
-//             nacos_config: srs_exporter_config.nacos,
-//             srs_config: srs_exporter_config.srs,
-//         };
-//     }
+impl NacosClient {
+    pub fn new(srs_exporter_config: &SrsExporterConfig) -> Self {
+        Self {
+            srs_exporter_config: srs_exporter_config.clone(),
+        }
+    }
 
-//     /**
-//      * did not process response yet
-//      */
-//     pub async fn register_service(self) -> Result<()> {
-//         let client = reqwest::Client::new();
-//         let body = client
-//             .post(format!(
-//                 "http://{}:{}/v1/ns/instance?serviceName={}&ip={}&port={}&namespaceId={}&groupName={}",
-//                 self.nacos_config.host,
-//                 self.nacos_config.port,
-//                 DEFAULT_SERVICE_NAME,
-//                 self.srs_config.host,
-//                 self.srs_config.rtmp_port,
-//                 self.nacos_config.namespace_id,
-//                 self.nacos_config.group_name
-//             ).as_str())
-//             .send()
-//             .await?
-//             .text()
-//             .await?;
+    /**
+     * register srs as a service in Nacos
+     */
+    pub async fn register_service(&self) -> Result<()> {
+        let SrsExporterConfig { nacos, srs } = self.srs_exporter_config.clone();
 
-//         Ok(())
-//     }
+        // just don't catch the response
+        reqwest::Client::new()
+            .post(format!(
+                "http://{}:{}/nacos/v1/ns/instance?serviceName={}&ip={}&port={}&namespaceId={}&groupName={}",
+                nacos.host,
+                nacos.port,
+                DEFAULT_SERVICE_NAME,
+                srs.host,
+                srs.rtmp_port,
+                nacos.namespace_id,
+                nacos.group_name
+            ).as_str())
+            .send()
+            .await?;
+        // .text()
+        // .await?;
+        // println!("服务注册 {:?}", body);
+        Ok(())
+    }
 
-//     pub async fn ping_pong(self) -> Result<()> {
-//         let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{{}}}}", DEFAULT_SERVICE_NAME, self.srs_config.host, self.srs_config.rtmp_port);
-//         let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
-//         let client = reqwest::Client::new();
-//         client
-//             .put(
-//                 format!(
-//                     "http://{}:{}/v1/ns/instance/beat?serviceName={}&beat={}",
-//                     self.nacos_config.host,
-//                     self.nacos_config.port,
-//                     DEFAULT_SERVICE_NAME,
-//                     encoded_beat
-//                 )
-//                 .as_str(),
-//             )
-//             .send()
-//             .await?;
-//         Ok(())
-//     }
-// }
+    /**
+     * use heart beat to keep srs service healthy
+     */
+    pub async fn ping_pong(self) -> Result<()> {
+        match self.check_srs_healthy().await {
+            Ok(_) => {
+                let SrsExporterConfig { nacos, srs } = self.srs_exporter_config.clone();
+                // combine group_name with service_name
+                let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
+                let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{{}}}}",
+                 svc_name, srs.host, srs.rtmp_port);
+                let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
+
+                reqwest::Client::new()
+                    .put(
+                        format!(
+                            "http://{}:{}/nacos/v1/ns/instance/beat?namespaceId={}&serviceName={}&beat={}",
+                             nacos.host, nacos.port,nacos.namespace_id, svc_name, encoded_beat
+                        )
+                        .as_str(),
+                    )
+                    .send()
+                    .await?;
+                //     .text()
+                //     .await?;
+                // println!("心跳 {:?}", body);
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /**
+     * just check srs http api is ok or not
+     */
+    async fn check_srs_healthy(&self) -> Result<bool> {
+        let SrsExporterConfig { nacos: _, srs } = self.srs_exporter_config.clone();
+        reqwest::Client::new()
+            .get(format!("http://{}:{}/api/v1/summaries", srs.host, srs.http_port).as_str())
+            .send()
+            .await?;
+        //     .text()
+        //     .await?;
+        // println!("SRS Summary {:?}", body);
+        Ok(true)
+    }
+}

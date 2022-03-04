@@ -3,22 +3,16 @@
  * Fetch SRS Status by http request, integrate with prometheus client.
  */
 use anyhow::Result;
-use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use serde_derive::Deserialize;
 
 mod collector;
 pub use collector::StreamUsage;
 
+mod nacos;
+pub use nacos::NacosClient;
+
 // const CONFIG_LOCATION: &str = "config.toml";
 const CONFIG_LOCATION: &str = "/mnt/e/Projects/project-github/srs-exporter/config.toml";
-const DEFAULT_SERVICE_NAME: &str = "srs";
-const FRAGMENT: &AsciiSet = &CONTROLS
-    .add(b' ')
-    .add(b'"')
-    .add(b'{')
-    .add(b'}')
-    .add(b':')
-    .add(b',');
 
 pub const CURRENT_VERSION: &str = "0.0.1";
 
@@ -112,97 +106,8 @@ pub fn parse_config() -> Result<SrsExporterConfig> {
             }
         }
     }
+
+    println!("{:?}", toml_config);
+
     Ok(toml_config)
 }
-
-/**
- * did not process response yet
- */
-pub async fn register_service(SrsExporterConfig { srs, nacos }: &SrsExporterConfig) -> Result<()> {
-    let client = reqwest::Client::new();
-    let body = client
-            .post(format!(
-                "http://{}:{}/nacos/v1/ns/instance?serviceName={}&ip={}&port={}&namespaceId={}&groupName={}",
-                nacos.host,
-                nacos.port,
-                DEFAULT_SERVICE_NAME,
-                srs.host,
-                srs.rtmp_port,
-                nacos.namespace_id,
-                nacos.group_name
-            ).as_str())
-            .send()
-            .await?
-            .text()
-            .await?;
-    println!("注册返回 {:?}", body);
-    Ok(())
-}
-
-pub async fn ping_pong(SrsExporterConfig { srs, nacos }: &SrsExporterConfig) -> Result<()> {
-    let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
-    // TODO check SRS liveness
-    let beat = format!(
-        "{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{{}}}}",
-        svc_name, srs.host, srs.rtmp_port
-    );
-    let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
-    let client = reqwest::Client::new();
-    let body = client
-        .put(
-            format!(
-                "http://{}:{}/nacos/v1/ns/instance/beat?namespaceId={}&serviceName={}&beat={}",
-                nacos.host,
-                nacos.port,
-                nacos.namespace_id,
-                svc_name,
-                encoded_beat
-            )
-            .as_str(),
-        )
-        .send()
-        .await?
-        .text()
-        .await?;
-    println!("心跳返回 {:?}", body);
-    Ok(())
-}
-
-// pub fn register_service(SrsExporterConfig { srs, nacos }: &SrsExporterConfig) -> Result<()> {
-//     let client = reqwest::blocking::Client::new();
-//     client
-//             .post(format!(
-//                 "http://{}:{}/v1/ns/instance?serviceName={}&ip={}&port={}&namespaceId={}&groupName={}",
-//                 nacos.host,
-//                 nacos.port,
-//                 DEFAULT_SERVICE_NAME,
-//                 srs.host,
-//                 srs.rtmp_port,
-//                 nacos.namespace_id,
-//                 nacos.group_name
-//             ).as_str())
-//             .send()
-//             .unwrap();
-//     Ok(())
-// }
-
-// pub fn ping_pong(SrsExporterConfig { srs, nacos }: &SrsExporterConfig) -> Result<()> {
-//     // TODO check SRS liveness
-//     let beat = format!(
-//         "{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{{}}}}",
-//         DEFAULT_SERVICE_NAME, srs.host, srs.rtmp_port
-//     );
-//     let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
-//     let client = reqwest::blocking::Client::new();
-//     client
-//         .put(
-//             format!(
-//                 "http://{}:{}/v1/ns/instance/beat?serviceName={}&beat={}",
-//                 nacos.host, nacos.port, DEFAULT_SERVICE_NAME, encoded_beat
-//             )
-//             .as_str(),
-//         )
-//         .send()
-//         .unwrap();
-//     Ok(())
-// }

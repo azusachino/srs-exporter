@@ -1,9 +1,7 @@
 use anyhow::Result;
 use chrono::prelude::Local;
 use prometheus::Registry;
-use srs_exporter::{
-    parse_config, ping_pong, register_service, SrsConfig, StreamUsage, CURRENT_VERSION,
-};
+use srs_exporter::{parse_config, NacosClient, SrsConfig, StreamUsage, CURRENT_VERSION};
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 #[tokio::main]
@@ -19,20 +17,13 @@ async fn main() {
 
     // spawn a task to check srs and report to nacos
     let config_clone = toml_config.clone();
-    // std::thread::spawn(move || {
-    //     register_service(&config_clone).unwrap();
-    //     loop {
-    //         std::thread::sleep(std::time::Duration::from_secs(2));
-    //         // process every two seconds
-    //         ping_pong(&config_clone).unwrap();
-    //     }
-    // });
     tokio::spawn(async move {
-        register_service(&config_clone).await.unwrap();
+        let nacos_client = NacosClient::new(&config_clone);
+        nacos_client.register_service().await.unwrap();
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             // process every two seconds
-            ping_pong(&config_clone).await.unwrap();
+            nacos_client.clone().ping_pong().await.unwrap();
         }
     });
 

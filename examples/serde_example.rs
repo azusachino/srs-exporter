@@ -19,6 +19,7 @@ fn main() -> Result<()> {
     complex()
 }
 
+#[allow(unused)]
 fn simple() -> Result<()> {
     // Some JSON input data as a &str. Maybe this comes from the user.
     let data = r#"

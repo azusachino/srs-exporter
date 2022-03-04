@@ -53,10 +53,10 @@ impl StreamUsage {
 
     pub async fn collect(&self) -> Result<String> {
         // get current stream usage
-        let ret = reqwest::get(self.srs_url.clone())
-            .await?
-            .json::<HashMap<String, String>>()
-            .await?;
+        // let ret = reqwest::get(self.srs_url.clone())
+        //     .await?
+        //     .json::<HashMap<String, String>>()
+        //     .await?;
         self.total.add(12.0);
         self.clients.add(3.0);
         // Gather the metrics.

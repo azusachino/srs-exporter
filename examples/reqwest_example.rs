@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use anyhow::Result;
 use reqwest::{self, get};
 use serde_derive::Deserialize;
