@@ -1,4 +1,4 @@
-use crate::SrsExporterConfig;
+use crate::SrsConfig;
 use anyhow::Result;
 use prometheus::{Encoder, Gauge, Opts, Registry, TextEncoder};
 use serde_derive::Deserialize;
@@ -30,10 +30,10 @@ struct StreamStatus {
 }
 
 impl StreamUsage {
-    pub fn new(registry: Registry, srs_config: &SrsExporterConfig) -> Self {
+    pub fn new(registry: Registry, srs_config: &SrsConfig) -> Self {
         let srs_url = format!(
             "http://{}:{}{}",
-            srs_config.srs_host, srs_config.srs_http_port, BASE_URL
+            srs_config.host, srs_config.http_port, BASE_URL
         );
         let su = Self {
             registry: registry,

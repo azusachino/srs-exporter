@@ -1,0 +1,10 @@
+[srs]
+host = "172.31.103.161"
+http_port = "1985"
+rtmp_port = "1935"
+
+[nacos]
+host = "172.31.103.161"
+port = "18848"
+namespace_id = "scv"
+group_name = "scv"
