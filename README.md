@@ -30,3 +30,9 @@ docker run --rm -it -p 1935:1935 -p 1985:1985 -p 8080:8080 registry.cn-hangzhou.
 ```sh
 docker run --rm -it -p 8848:8848 -e PREFER_HOST_MODE=hostname -e MODE=standalone nacos/nacos-server:v2.0.4
 ```
+
+## Podman Instructions
+
+1. `podman run -it rust:1.59.0-buster /bin/sh`
+2. `podman cotainer cp [container:]src_file [container:]target_file`
+3. `podman container commit [container] image_name`
