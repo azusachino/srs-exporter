@@ -1,15 +1,15 @@
-use crate::SrsConfig;
-use anyhow::Result;
-use prometheus::{Encoder, IntGauge, Opts, Registry, TextEncoder};
+use prometheus::{IntGauge, Opts, Registry};
 use serde_derive::Deserialize;
+
+use crate::SrsConfig;
 
 const BASE_URL: &str = "/api/v1/streams/";
 
 /**
  * manage all streams or specified stream
  */
+#[derive(Clone, Debug)]
 pub struct StreamCollector {
-    registry: Registry,
     srs_url: String,
     total: IntGauge,
     clients: IntGauge,
@@ -39,16 +39,14 @@ struct StreamStatus {
 }
 
 impl StreamCollector {
-    pub fn new(registry: Registry, srs_config: &SrsConfig) -> Self {
-        let srs_url = format!(
-            "http://{}:{}{}",
-            srs_config.host,
-            srs_config.http_port.unwrap(),
-            BASE_URL
-        );
+    pub fn new(registry: &Registry, srs_config: &SrsConfig) -> Self {
         let su = Self {
-            registry: registry,
-            srs_url,
+            srs_url: format!(
+                "http://{}:{}{}",
+                srs_config.host,
+                srs_config.http_port.unwrap(),
+                BASE_URL
+            ),
             total: IntGauge::with_opts(Opts::new(
                 "stream_active_total",
                 "Total amount of active streams",
@@ -61,29 +59,30 @@ impl StreamCollector {
             .unwrap(),
         };
         // 在初始化时注册到 registry
-        su.registry.register(Box::new(su.total.clone())).unwrap();
-        su.registry.register(Box::new(su.clients.clone())).unwrap();
+        registry.register(Box::new(su.total.clone())).unwrap();
+        registry.register(Box::new(su.clients.clone())).unwrap();
         su
     }
 
-    pub async fn collect(&self) -> Result<String> {
+    pub async fn collect(self) {
         // get current stream usage
-        let ret = reqwest::get(self.srs_url.clone())
-            .await?
+        let ret = reqwest::Client::new()
+            .get(self.srs_url)
+            .send()
+            .await
+            .unwrap()
             .json::<StreamResponse>()
-            .await?;
-        println!("Stream Response: {:?}", ret);
+            // .text()
+            .await
+            .unwrap();
+        // println!("Stream Response: {:?}", ret);
         self.total.set(ret.streams.len() as i64);
         let mut total_clients: i64 = 0;
-        for s in ret.streams.into_iter() {
-            total_clients += s.clients as i64;
+        if ret.streams.len() > 0 {
+            for s in ret.streams.into_iter() {
+                total_clients += s.clients as i64;
+            }
         }
         self.clients.set(total_clients);
-        // Gather the metrics.
-        let mut buffer = vec![];
-        let encoder = TextEncoder::new();
-        let metric_families = self.registry.gather();
-        encoder.encode(&metric_families, &mut buffer).unwrap();
-        Ok(String::from_utf8(buffer).unwrap())
     }
 }

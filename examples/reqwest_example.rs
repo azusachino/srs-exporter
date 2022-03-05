@@ -36,8 +36,20 @@ struct SystemData {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let url = "http://localhost:1985/api/v1/summaries";
-    let ret = get(url).await?.json::<SummaryResponse>().await?;
-    println!("{:?}", ret);
+    let ret = reqwest::get("http://localhost:1985/api/v1/summaries/")
+        .await?
+        .text()
+        .await?;
+    println!("{:#?}", ret);
     Ok(())
 }
+
+// #[tokio::main]
+// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//     let resp = reqwest::get("https://httpbin.org/ip")
+//         .await?
+//         .json::<HashMap<String, String>>()
+//         .await?;
+//     println!("{:#?}", resp);
+//     Ok(())
+// }

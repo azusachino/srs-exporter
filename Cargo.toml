@@ -9,7 +9,7 @@ repository = "https://github.com/azusachino/srs-exporter"
 
 [dependencies]
 anyhow = "1.0.55"
-chrono = { version = "0.4.19", features = ["serde"] }
+axum = "0.4.8"
 json = "0.12.4"
 percent-encoding = "2.1.0"
 prometheus = "0.13.0"
