@@ -1,13 +1,22 @@
 use anyhow::Result;
 use chrono::prelude::Local;
 use prometheus::Registry;
-use srs_exporter::{parse_config, NacosClient, SrsConfig, StreamUsage, CURRENT_VERSION};
+use srs_exporter::{
+    parse_config, NacosClient, SrsConfig, StreamCollector, CURRENT_VERSION, DEFAULT_CONFIG,
+};
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 #[tokio::main]
 async fn main() {
-    let toml_config = parse_config().unwrap();
-    let addr = "127.0.0.1:9007";
+    // treat first arg as config file location
+    let f = match std::env::args().nth(1) {
+        Some(f) => f,
+        None => DEFAULT_CONFIG.to_string(),
+    };
+
+    let toml_config = parse_config(f).unwrap();
+    // container environment compatiable
+    let addr = format!("0.0.0.0:{}", toml_config.port.unwrap());
     let listener = TcpListener::bind(addr.clone()).await.unwrap();
 
     println!(
@@ -68,6 +77,6 @@ Accept-Ranges: bytes
 
 async fn collect_metrics(srs_config: &SrsConfig) -> Result<String> {
     let r = Registry::new();
-    let su = StreamUsage::new(r, srs_config);
+    let su = StreamCollector::new(r, srs_config);
     Ok(su.collect().await?)
 }

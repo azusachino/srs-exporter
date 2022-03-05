@@ -4,20 +4,20 @@
  */
 use anyhow::Result;
 use serde_derive::Deserialize;
+use std::env;
 
 mod collector;
-pub use collector::StreamUsage;
+pub use collector::StreamCollector;
 
 mod nacos;
 pub use nacos::NacosClient;
 
-// const CONFIG_LOCATION: &str = "config.toml";
-const CONFIG_LOCATION: &str = "/mnt/e/Projects/project-github/srs-exporter/config.toml";
+pub const DEFAULT_CONFIG: &str = "config.toml";
+pub const CURRENT_VERSION: &str = "0.0.2";
 
-pub const CURRENT_VERSION: &str = "0.0.1";
-
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct SrsExporterConfig {
+    pub port: Option<u32>,
     pub srs: SrsConfig,
     pub nacos: NacosConfig,
 }
@@ -25,31 +25,43 @@ pub struct SrsExporterConfig {
 /**
  * SRS Config
  */
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct SrsConfig {
+    http_port: Option<u32>,
+    rtmp_port: Option<u32>,
     host: String,
-    http_port: String,
-    rtmp_port: String,
 }
 
 /**
  * SRS Config
  */
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Default)]
 pub struct NacosConfig {
+    port: Option<u32>,
     host: String,
-    port: String,
     namespace_id: String,
     group_name: String,
 }
 
-pub fn parse_config() -> Result<SrsExporterConfig> {
-    use std::env;
-    let read_bytes = std::fs::read_to_string(CONFIG_LOCATION)?;
+pub fn parse_config(config: String) -> Result<SrsExporterConfig> {
     // try read from config
-    let mut toml_config: SrsExporterConfig = toml::from_str(&read_bytes)?;
+    let mut toml_config: SrsExporterConfig = match std::fs::read_to_string(config) {
+        Ok(string) => toml::from_str(&string)?,
+        // no config file, create default
+        Err(_) => SrsExporterConfig::default(),
+    };
 
-    // check exists, if not try read from env
+    // check config exists, if not try read from env
+    match toml_config.port {
+        Some(_) => {}
+        None => match env::var("EXPORTER_PORT") {
+            Ok(port) => toml_config.port = Some(port.parse::<u32>().unwrap()),
+            Err(_) => {
+                toml_config.port = Some(9717);
+            }
+        },
+    }
+
     if toml_config.srs.host.is_empty() {
         match env::var("SRS_HOST") {
             Ok(host) => toml_config.srs.host = host,
@@ -58,22 +70,27 @@ pub fn parse_config() -> Result<SrsExporterConfig> {
             }
         }
     }
-    if toml_config.srs.http_port.is_empty() {
-        match env::var("SRS_HTTP_PORT") {
-            Ok(http_port) => toml_config.srs.http_port = http_port,
+
+    match toml_config.srs.http_port {
+        Some(_) => {}
+        None => match env::var("SRS_HTTP_PORT") {
+            Ok(http_port) => toml_config.srs.http_port = Some(http_port.parse::<u32>().unwrap()),
             Err(_) => {
-                toml_config.srs.http_port = String::from("1985");
+                toml_config.srs.http_port = Some(1985);
             }
-        }
+        },
     }
-    if toml_config.srs.rtmp_port.is_empty() {
-        match env::var("SRS_RTMP_PORT") {
-            Ok(rtmp_port) => toml_config.srs.rtmp_port = rtmp_port,
+
+    match toml_config.srs.rtmp_port {
+        Some(_) => {}
+        None => match env::var("SRS_RTMP_PORT") {
+            Ok(rtmp_port) => toml_config.srs.rtmp_port = Some(rtmp_port.parse::<u32>().unwrap()),
             Err(_) => {
-                toml_config.srs.rtmp_port = String::from("1935");
+                toml_config.srs.rtmp_port = Some(1935);
             }
-        }
+        },
     }
+
     if toml_config.nacos.host.is_empty() {
         match env::var("NACOS_HOST") {
             Ok(host) => toml_config.nacos.host = host,
@@ -82,13 +99,15 @@ pub fn parse_config() -> Result<SrsExporterConfig> {
             }
         }
     }
-    if toml_config.nacos.port.is_empty() {
-        match env::var("NACOS_PORT") {
-            Ok(port) => toml_config.nacos.port = port,
+
+    match toml_config.nacos.port {
+        Some(_) => {}
+        None => match env::var("SRS_RTMP_PORT") {
+            Ok(port) => toml_config.nacos.port = Some(port.parse::<u32>().unwrap()),
             Err(_) => {
-                toml_config.nacos.port = String::from("8848");
+                toml_config.nacos.port = Some(8848);
             }
-        }
+        },
     }
     if toml_config.nacos.namespace_id.is_empty() {
         match env::var("NACOS_NAMESPACE_ID") {
@@ -106,8 +125,6 @@ pub fn parse_config() -> Result<SrsExporterConfig> {
             }
         }
     }
-
-    println!("{:?}", toml_config);
 
     Ok(toml_config)
 }
