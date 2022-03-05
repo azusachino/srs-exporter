@@ -40,37 +40,21 @@ async fn main() {
     loop {
         let (mut socket, _) = listener.accept().await.unwrap();
 
-        let fake_html_content = collect_metrics(&srs).await.unwrap();
-        // let fake_html_content = "Hello World";
-        let fake_html = format!(
-            "<html>
-              <header>
-                <title>SRS Metrics</title>
-              </header>
-              <body>
-                <pre style=\"word-wrap: break-word; white-space: pre-wrap\">
-{}
-                </pre>
-              </body>
-            </html>",
-            fake_html_content
-        );
+        let fake_content = collect_metrics(&srs).await.unwrap();
         let current = Local::now().to_rfc2822();
         // let current = "Thu, 03 Mar 2022 08:34:52 GMT";
         // Important!!! HTTP HEADER要顶格写
         let fake_header = format!(
             "
 HTTP/1.1 200 OK
-Server: nginx/1.16.1
-Date: {}
-Content-Type: text/html
+Content-Type: text/plain; version=0.0.4; charset=utf-8
 Content-Length: {}
-Accept-Ranges: bytes
+Date: {}
 ",
+            fake_content.as_bytes().len(),
             current,
-            fake_html.as_bytes().len(),
         );
-        let res = format!("{}\n{}", fake_header, fake_html);
+        let res = format!("{}\n{}", fake_header, fake_content);
         socket.write_all(res.as_bytes()).await.unwrap();
     }
 }
