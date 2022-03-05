@@ -1,11 +1,5 @@
 [source.crates-io]
-replace-with = 'rsproxy'
+replace-with = 'ustc'
 
-[source.rsproxy]
-registry = "https://rsproxy.cn/crates.io-index"
-
-[registries.rsproxy]
-index = "https://rsproxy.cn/crates.io-index"
-
-[net]
-git-fetch-with-cli = true
+[source.ustc]
+registry = "https://mirrors.ustc.edu.cn/crates.io-index"

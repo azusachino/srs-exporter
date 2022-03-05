@@ -36,3 +36,7 @@ docker run --rm -it -p 8848:8848 -e PREFER_HOST_MODE=hostname -e MODE=standalone
 1. `podman run -it rust:1.59.0-buster /bin/sh`
 2. `podman cotainer cp [container:]src_file [container:]target_file`
 3. `podman container commit [container] image_name`
+
+## Reference
+
+- [How to create small Docker images for Rust](https://kerkour.com/rust-small-docker-image)

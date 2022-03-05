@@ -4,6 +4,7 @@
  */
 use anyhow::Result;
 use serde_derive::Deserialize;
+use std::env;
 
 mod collector;
 pub use collector::StreamCollector;
@@ -11,9 +12,7 @@ pub use collector::StreamCollector;
 mod nacos;
 pub use nacos::NacosClient;
 
-// const CONFIG_LOCATION: &str = "config.toml";
-const CONFIG_LOCATION: &str = "/mnt/e/Projects/project-github/srs-exporter/config.toml";
-
+pub const DEFAULT_CONFIG: &str = "config.toml";
 pub const CURRENT_VERSION: &str = "0.0.1";
 
 #[derive(Clone, Debug, Deserialize)]
@@ -43,9 +42,8 @@ pub struct NacosConfig {
     group_name: String,
 }
 
-pub fn parse_config() -> Result<SrsExporterConfig> {
-    use std::env;
-    let read_bytes = std::fs::read_to_string(CONFIG_LOCATION)?;
+pub fn parse_config(config: String) -> Result<SrsExporterConfig> {
+    let read_bytes = std::fs::read_to_string(config)?;
     // try read from config
     let mut toml_config: SrsExporterConfig = toml::from_str(&read_bytes)?;
 
