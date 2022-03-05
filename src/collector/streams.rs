@@ -42,7 +42,9 @@ impl StreamCollector {
     pub fn new(registry: Registry, srs_config: &SrsConfig) -> Self {
         let srs_url = format!(
             "http://{}:{}{}",
-            srs_config.host, srs_config.http_port, BASE_URL
+            srs_config.host,
+            srs_config.http_port.unwrap(),
+            BASE_URL
         );
         let su = Self {
             registry: registry,

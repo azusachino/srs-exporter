@@ -15,7 +15,8 @@ async fn main() {
     };
 
     let toml_config = parse_config(f).unwrap();
-    let addr = "127.0.0.1:9717";
+    // container environment compatiable
+    let addr = format!("0.0.0.0:{}", toml_config.port.unwrap());
     let listener = TcpListener::bind(addr.clone()).await.unwrap();
 
     println!(
