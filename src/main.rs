@@ -14,11 +14,12 @@ async fn main() {
         None => DEFAULT_CONFIG.to_string(),
     };
     let toml_config = parse_config(f).unwrap();
-
+    let app_config = toml_config.app.clone();
+    let srs_config = toml_config.srs.clone();
+    
     // 2. spawn a task to check srs and report to nacos
-    let config_clone = toml_config.clone();
     tokio::spawn(async move {
-        let nacos_client = NacosClient::new(&config_clone);
+        let nacos_client = NacosClient::new(&toml_config);
         nacos_client.register_service().await.unwrap();
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -28,10 +29,10 @@ async fn main() {
     });
 
     // 3. create shared_state which will be MetricCollector
-    let shared_collector = MetricCollector::new(Registry::new(), toml_config.srs.clone());
+    let shared_collector = MetricCollector::new(Registry::new(), srs_config);
 
     // 4. http server
-    let addr = SocketAddr::from(([0, 0, 0, 0], toml_config.port.unwrap()));
+    let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port.unwrap()));
 
     println!(
         "Srs Exporter will listen on {}, Current Version is {}",

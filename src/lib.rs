@@ -13,13 +13,25 @@ mod collector;
 mod nacos;
 
 pub const DEFAULT_CONFIG: &str = "config.toml";
-pub const CURRENT_VERSION: &str = "0.0.2";
+pub const CURRENT_VERSION: &str = "0.0.3";
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct SrsExporterConfig {
-    pub port: Option<u16>,
+    pub app: AppConfig,
     pub srs: SrsConfig,
     pub nacos: NacosConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, Default)]
+pub struct AppConfig {
+    /**
+     * Srs Exporter Running port [will report to nacos]
+     */
+    pub port: Option<u16>,
+    /**
+     * Srs Exporter's host [will report to nacos]
+     */
+    pub host: String,
 }
 
 /**
@@ -55,12 +67,21 @@ pub fn parse_config(config: String) -> Result<SrsExporterConfig> {
     };
 
     // check config exists, if not try read from env
-    match toml_config.port {
-        Some(_) => {}
-        None => match env::var("EXPORTER_PORT") {
-            Ok(port) => toml_config.port = Some(port.parse::<u16>().unwrap()),
+    if toml_config.app.host.is_empty() {
+        match env::var("SRS_EXPORTER_HOST") {
+            Ok(host) => toml_config.app.host = host,
             Err(_) => {
-                toml_config.port = Some(9717);
+                toml_config.app.host = String::from("localhost");
+            }
+        }
+    }
+
+    match toml_config.app.port {
+        Some(_) => {}
+        None => match env::var("SRS_EXPORTER_PORT") {
+            Ok(port) => toml_config.app.port = Some(port.parse::<u16>().unwrap()),
+            Err(_) => {
+                toml_config.app.port = Some(9717);
             }
         },
     }

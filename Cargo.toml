@@ -1,6 +1,6 @@
 [package]
 name = "srs_exporter"
-version = "0.0.1"
+version = "0.0.3"
 authors = ["azusachino <azusa146@gmail.com>"]
 edition = "2021"
 readme = "README.md"
