@@ -1,7 +1,9 @@
+use std::result::Result;
+
 use prometheus::{IntGauge, Opts, Registry};
 use serde_derive::Deserialize;
 
-use crate::SrsConfig;
+use crate::{AppError, SrsConfig};
 
 const BASE_URL: &str = "/api/v1/streams/";
 
@@ -48,13 +50,13 @@ impl StreamCollector {
                 BASE_URL
             ),
             total: IntGauge::with_opts(Opts::new(
-                "stream_active_total",
-                "Total amount of active streams",
+                "srs_stream_active_total",
+                "Total amount of SRS active streams",
             ))
             .unwrap(),
             clients: IntGauge::with_opts(Opts::new(
-                "stream_clients_total",
-                "Total amount of connected clients",
+                "srs_stream_clients_total",
+                "Total amount of SRS connected clients",
             ))
             .unwrap(),
         };
@@ -64,25 +66,27 @@ impl StreamCollector {
         su
     }
 
-    pub async fn collect(self) {
+    pub async fn collect(self) -> Result<(), AppError> {
         // get current stream usage
-        let ret = reqwest::Client::new()
-            .get(self.srs_url)
-            .send()
-            .await
-            .unwrap()
-            .json::<StreamResponse>()
-            // .text()
-            .await
-            .unwrap();
-        // println!("Stream Response: {:?}", ret);
-        self.total.set(ret.streams.len() as i64);
-        let mut total_clients: i64 = 0;
-        if ret.streams.len() > 0 {
-            for s in ret.streams.into_iter() {
-                total_clients += s.clients as i64;
+        match reqwest::Client::new().get(self.srs_url).send().await {
+            Ok(res) => {
+                match res.json::<StreamResponse>().await {
+                    Ok(ret) => {
+                        // println!("Stream Response: {:?}", ret);
+                        self.total.set(ret.streams.len() as i64);
+                        let mut total_clients: i64 = 0;
+                        if ret.streams.len() > 0 {
+                            for s in ret.streams.into_iter() {
+                                total_clients += s.clients as i64;
+                            }
+                        }
+                        self.clients.set(total_clients);
+                        Ok(())
+                    }
+                    Err(_) => Err(AppError::SrsUnreachable),
+                }
             }
+            Err(_) => Err(AppError::SrsUnreachable),
         }
-        self.clients.set(total_clients);
     }
 }

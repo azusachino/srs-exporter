@@ -117,9 +117,6 @@ impl NacosClient {
             )
             .send()
             .await?;
-        //     .text()
-        //     .await?;
-        // println!("SRS Summary {:?}", body);
         Ok(true)
     }
 }

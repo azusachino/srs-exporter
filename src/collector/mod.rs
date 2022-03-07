@@ -1,9 +1,9 @@
 mod stream;
 mod summary;
 
-// TODO more collector
-use crate::SrsConfig;
+use crate::{AppError, SrsConfig};
 use prometheus::{Encoder, Registry, TextEncoder};
+use std::result::Result;
 use stream::StreamCollector;
 use summary::SummaryCollector;
 
@@ -28,13 +28,13 @@ impl MetricCollector {
     /**
      * Gather the metrics.
      */
-    pub async fn collect(self) -> String {
-        self.stream.collect().await;
-        self.summary.collect().await;
+    pub async fn collect(self) -> Result<String, AppError> {
+        self.stream.collect().await?;
+        self.summary.collect().await?;
         let mut buffer = vec![];
         let encoder = TextEncoder::new();
         let metric_families = self.registry.gather();
         encoder.encode(&metric_families, &mut buffer).unwrap();
-        String::from_utf8(buffer).unwrap()
+        Ok(String::from_utf8(buffer).unwrap())
     }
 }

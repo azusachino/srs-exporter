@@ -16,9 +16,10 @@ async fn main() {
     let toml_config = parse_config(f).unwrap();
     let app_config = toml_config.app.clone();
     let srs_config = toml_config.srs.clone();
-    
+
     // 2. spawn a task to check srs and report to nacos
     tokio::spawn(async move {
+        // TODO 优化Nacos/Srs无法连接时的处理
         let nacos_client = NacosClient::new(&toml_config);
         nacos_client.register_service().await.unwrap();
         loop {

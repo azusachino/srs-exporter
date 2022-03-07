@@ -3,17 +3,40 @@
  * Fetch SRS Status by http request, integrate with prometheus client.
  */
 use anyhow::Result;
-use serde_derive::Deserialize;
-use std::env;
-
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
 pub use collector::MetricCollector;
 pub use nacos::NacosClient;
+use serde_derive::Deserialize;
+use serde_json::json;
+use std::env;
 
 mod collector;
 mod nacos;
 
 pub const DEFAULT_CONFIG: &str = "config.toml";
 pub const CURRENT_VERSION: &str = "0.0.3";
+
+// Erros that can happen
+#[derive(Debug)]
+pub enum AppError {
+    NacosUnreachable,
+    SrsUnreachable,
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, msg) = match self {
+            AppError::NacosUnreachable => (StatusCode::INTERNAL_SERVER_ERROR,  "Cannot reach Nacos server, please check whether srs is healthy or whether the http api is configured"),
+            AppError::SrsUnreachable =>  (StatusCode::INTERNAL_SERVER_ERROR, "Cannot reach Srs server, please check whether srs is healthy or whether the http api is configured")
+        };
+
+        let body = Json(json!({ "error": msg }));
+
+        (status, body).into_response()
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct SrsExporterConfig {
