@@ -1,4 +1,7 @@
+[app]
 port = 9717
+host = "localhost"
+
 [srs]
 host = "localhost"
 http_port = 1985

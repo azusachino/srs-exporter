@@ -1,82 +1,101 @@
-use anyhow::Result;
-use chrono::prelude::Local;
+use axum::response::IntoResponse;
+use axum::{extract::Extension, response::Html, routing::get, Router};
 use prometheus::Registry;
-use srs_exporter::{
-    parse_config, NacosClient, SrsConfig, StreamCollector, CURRENT_VERSION, DEFAULT_CONFIG,
-};
-use tokio::{io::AsyncWriteExt, net::TcpListener};
+use std::net::SocketAddr;
+use tokio::signal;
+
+use srs_exporter::{parse_config, MetricCollector, NacosClient, CURRENT_VERSION, DEFAULT_CONFIG};
 
 #[tokio::main]
 async fn main() {
-    // treat first arg as config file location
+    // 1. treat first arg as config file location & parse config
     let f = match std::env::args().nth(1) {
         Some(f) => f,
         None => DEFAULT_CONFIG.to_string(),
     };
-
     let toml_config = parse_config(f).unwrap();
-    // container environment compatiable
-    let addr = format!("0.0.0.0:{}", toml_config.port.unwrap());
-    let listener = TcpListener::bind(addr.clone()).await.unwrap();
+    let app_config = toml_config.app.clone();
+    let srs_config = toml_config.srs.clone();
 
-    println!(
-        "Srs Exporter is listening {}, Current Version is {}",
-        addr, CURRENT_VERSION
-    );
-
-    // spawn a task to check srs and report to nacos
-    let config_clone = toml_config.clone();
+    // 2. spawn a task to check srs and report to nacos
     tokio::spawn(async move {
-        let nacos_client = NacosClient::new(&config_clone);
-        nacos_client.register_service().await.unwrap();
+        let nacos_client = NacosClient::new(&toml_config);
+        match nacos_client.register_service().await {
+            Ok(_) => println!("Nacos service registration succeed"),
+            Err(e) => println!("{}", e),
+        }
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             // process every two seconds
-            nacos_client.clone().ping_pong().await.unwrap();
+            match nacos_client.clone().ping_pong().await {
+                Ok(_) => println!("Nacos service ping pong succeed"),
+                Err(e) => println!("{}", e),
+            }
         }
     });
 
-    let srs: SrsConfig = toml_config.srs;
-    loop {
-        let (mut socket, _) = listener.accept().await.unwrap();
+    // 3. create shared_state which will be MetricCollector
+    let shared_collector = MetricCollector::new(Registry::new(), srs_config);
 
-        let fake_html_content = collect_metrics(&srs).await.unwrap();
-        // let fake_html_content = "Hello World";
-        let fake_html = format!(
-            "<html>
-              <header>
-                <title>SRS Metrics</title>
-              </header>
-              <body>
-                <pre style=\"word-wrap: break-word; white-space: pre-wrap\">
-{}
-                </pre>
-              </body>
-            </html>",
-            fake_html_content
-        );
-        let current = Local::now().to_rfc2822();
-        // let current = "Thu, 03 Mar 2022 08:34:52 GMT";
-        // Important!!! HTTP HEADER要顶格写
-        let fake_header = format!(
-            "
-HTTP/1.1 200 OK
-Server: nginx/1.16.1
-Date: {}
-Content-Type: text/html
-Content-Length: {}
-Accept-Ranges: bytes
-",
-            current,
-            fake_html.as_bytes().len(),
-        );
-        let res = format!("{}\n{}", fake_header, fake_html);
-        socket.write_all(res.as_bytes()).await.unwrap();
-    }
+    // 4. http server
+    let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port.unwrap()));
+
+    println!(
+        "Srs Exporter will listen on {}, Current Version is {}",
+        addr, CURRENT_VERSION
+    );
+    let app = Router::new()
+        .route("/", get(root))
+        // .route(
+        //     "/slow",
+        //     get(|| async {
+        //         tokio::time::sleep(Duration::from_secs(1)).await;
+        //     }),
+        // )
+        .route("/metrics", get(collect))
+        .layer(Extension(shared_collector));
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
 }
 
-async fn collect_metrics(srs_config: &SrsConfig) -> Result<String> {
-    let r = Registry::new();
-    let su = StreamCollector::new(r, srs_config);
-    Ok(su.collect().await?)
+async fn root() -> Html<&'static str> {
+    Html(
+        "<div>
+        <p>Hello, This is SRS Exporter!</p>
+        <p>Please check on <a href=\"/metrics\">/metrics</a>.</p>
+        </div>",
+    )
+}
+
+async fn collect(Extension(mc): Extension<MetricCollector>) -> impl IntoResponse {
+    mc.collect().await
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("signal received, starting graceful shutdown");
 }
