@@ -11,12 +11,18 @@ pub use nacos::NacosClient;
 use serde_derive::Deserialize;
 use serde_json::json;
 use std::env;
+use std::fmt::{self, Display};
 
 mod collector;
 mod nacos;
 
 pub const DEFAULT_CONFIG: &str = "config.toml";
 pub const CURRENT_VERSION: &str = "0.0.3";
+
+const NACOS_ERROR_MSG: &str =
+    "Cannot reach Nacos server, please check srs-exporter's config.toml and the Nacos server";
+const SRS_ERROR_MSG: &str =
+    "Cannot reach SRS server, please check SRS's configuration and the SRS Server";
 
 // Erros that can happen
 #[derive(Debug)]
@@ -25,16 +31,29 @@ pub enum AppError {
     SrsUnreachable,
 }
 
+/**
+ * HTTP Response
+ */
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, msg) = match self {
-            AppError::NacosUnreachable => (StatusCode::INTERNAL_SERVER_ERROR,  "Cannot reach Nacos server, please check whether srs is healthy or whether the http api is configured"),
-            AppError::SrsUnreachable =>  (StatusCode::INTERNAL_SERVER_ERROR, "Cannot reach Srs server, please check whether srs is healthy or whether the http api is configured")
+            AppError::NacosUnreachable => (StatusCode::INTERNAL_SERVER_ERROR, NACOS_ERROR_MSG),
+            AppError::SrsUnreachable => (StatusCode::INTERNAL_SERVER_ERROR, SRS_ERROR_MSG),
         };
 
-        let body = Json(json!({ "error": msg }));
+        (status, Json(json!({ "error": msg }))).into_response()
+    }
+}
 
-        (status, body).into_response()
+/**
+ * Println
+ */
+impl Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            AppError::NacosUnreachable => write!(f, "{}", NACOS_ERROR_MSG),
+            AppError::SrsUnreachable => write!(f, "{}", SRS_ERROR_MSG),
+        }
     }
 }
 

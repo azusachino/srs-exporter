@@ -19,13 +19,18 @@ async fn main() {
 
     // 2. spawn a task to check srs and report to nacos
     tokio::spawn(async move {
-        // TODO 优化Nacos/Srs无法连接时的处理
         let nacos_client = NacosClient::new(&toml_config);
-        nacos_client.register_service().await.unwrap();
+        match nacos_client.register_service().await {
+            Ok(_) => println!("Nacos service registration succeed"),
+            Err(e) => println!("{}", e),
+        }
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             // process every two seconds
-            nacos_client.clone().ping_pong().await.unwrap();
+            match nacos_client.clone().ping_pong().await {
+                Ok(_) => println!("Nacos service ping pong succeed"),
+                Err(e) => println!("{}", e),
+            }
         }
     });
 
@@ -57,7 +62,12 @@ async fn main() {
 }
 
 async fn root() -> Html<&'static str> {
-    Html("Hello, SRS Exporter!\nPlease Check /metrics.")
+    Html(
+        "<div>
+        <p>Hello, This is SRS Exporter!</p>
+        <p>Please check on <a href=\"/metrics\">/metrics</a>.</p>
+        </div>",
+    )
 }
 
 async fn collect(Extension(mc): Extension<MetricCollector>) -> impl IntoResponse {

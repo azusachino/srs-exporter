@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
-use crate::SrsExporterConfig;
-use anyhow::Result;
+use crate::{AppError, SrsExporterConfig};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use reqwest::Url;
+use std::collections::HashMap;
+use std::result::Result;
 
 const DEFAULT_SERVICE_NAME: &str = "srs";
 const FRAGMENT: &AsciiSet = &CONTROLS
@@ -33,7 +32,7 @@ impl NacosClient {
      * register srs as a service in Nacos
      * add srs-exporter config in metadata, for nacos client able to fetch data from prometheus [instance]
      */
-    pub async fn register_service(&self) -> Result<()> {
+    pub async fn register_service(&self) -> Result<(), AppError> {
         let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
 
         let metadata = HashMap::from([
@@ -58,18 +57,16 @@ impl NacosClient {
             ],
         )
         .unwrap();
-        // just don't catch the response
-        reqwest::Client::new().post(url).send().await?;
-        // .text()
-        // .await?;
-        // println!("服务注册 {:?}", body);
-        Ok(())
+        match reqwest::Client::new().post(url).send().await {
+            Ok(_) => Ok(()),
+            Err(_) => Err(AppError::NacosUnreachable),
+        }
     }
 
     /**
      * use heart beat to keep srs service healthy
      */
-    pub async fn ping_pong(&self) -> Result<()> {
+    pub async fn ping_pong(&self) -> Result<(), AppError> {
         match self.check_srs_healthy().await {
             Ok(_) => {
                 let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
@@ -87,11 +84,10 @@ impl NacosClient {
                     "http://{}:{}/nacos/v1/ns/instance/beat?namespaceId={}&serviceName={}&beat={}",
                      nacos.host, nacos.port.unwrap(), nacos.namespace_id, svc_name, encoded_beat
                 );
-                reqwest::Client::new().put(url.as_str()).send().await?;
-                //     .text()
-                //     .await?;
-                // println!("心跳 {:?}", body);
-                Ok(())
+                match reqwest::Client::new().put(url.as_str()).send().await {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err(AppError::NacosUnreachable),
+                }
             }
             Err(e) => Err(e),
         }
@@ -100,23 +96,21 @@ impl NacosClient {
     /**
      * just check srs http api is ok or not
      */
-    async fn check_srs_healthy(&self) -> Result<bool> {
+    async fn check_srs_healthy(&self) -> Result<bool, AppError> {
         let SrsExporterConfig {
             app: _,
             nacos: _,
             srs,
         } = self.srs_exporter_config.clone();
-        reqwest::Client::new()
-            .get(
-                format!(
-                    "http://{}:{}/api/v1/summaries",
-                    srs.host,
-                    srs.http_port.unwrap()
-                )
-                .as_str(),
-            )
-            .send()
-            .await?;
-        Ok(true)
+        let url = format!(
+            "http://{}:{}/api/v1/summaries",
+            srs.host,
+            srs.http_port.unwrap()
+        );
+
+        match reqwest::Client::new().get(url.as_str()).send().await {
+            Ok(_) => Ok(true),
+            Err(_) => Err(AppError::SrsUnreachable),
+        }
     }
 }
