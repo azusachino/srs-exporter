@@ -7,6 +7,9 @@ use std::result::Result;
 use stream::StreamCollector;
 use summary::SummaryCollector;
 
+/**
+ * The Metric Collector, wraps a set of collectors
+ */
 #[derive(Clone, Debug)]
 pub struct MetricCollector {
     registry: Registry,
@@ -15,6 +18,9 @@ pub struct MetricCollector {
 }
 
 impl MetricCollector {
+    /**
+     * Constructor
+     */
     pub fn new(registry: Registry, srs_config: SrsConfig) -> Self {
         let stream = StreamCollector::new(&registry, &srs_config);
         let summary = SummaryCollector::new(&registry, &srs_config);

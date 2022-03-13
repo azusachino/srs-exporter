@@ -40,6 +40,9 @@ struct SelfStatus {
 }
 
 impl SummaryCollector {
+    /**
+     * Constructor
+     */
     pub fn new(registry: &Registry, srs_config: &SrsConfig) -> Self {
         let sc = Self {
             srs_url: format!(
@@ -61,8 +64,10 @@ impl SummaryCollector {
         sc
     }
 
+    /**
+     * Collect Cpu/Mem status
+     */
     pub async fn collect(self) -> Result<(), AppError> {
-        // get current stream usage
         match reqwest::Client::new().get(self.srs_url).send().await {
             Ok(res) => match res.json::<SummaryResponse>().await {
                 Ok(ret) => {

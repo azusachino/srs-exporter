@@ -41,6 +41,9 @@ struct StreamStatus {
 }
 
 impl StreamCollector {
+    /**
+     * Constructor
+     */
     pub fn new(registry: &Registry, srs_config: &SrsConfig) -> Self {
         let su = Self {
             srs_url: format!(
@@ -60,14 +63,17 @@ impl StreamCollector {
             ))
             .unwrap(),
         };
-        // 在初始化时注册到 registry
+        // register to prometheus registry
         registry.register(Box::new(su.total.clone())).unwrap();
         registry.register(Box::new(su.clients.clone())).unwrap();
         su
     }
 
+    /**
+     * Collect Stream/Client status
+     */
     pub async fn collect(self) -> Result<(), AppError> {
-        // get current stream usage
+        // use match to handle error in different await and transform to custom error for handling
         match reqwest::Client::new().get(self.srs_url).send().await {
             Ok(res) => {
                 match res.json::<StreamResponse>().await {

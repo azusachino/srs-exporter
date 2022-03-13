@@ -8,6 +8,12 @@ use srs_exporter::{parse_config, MetricCollector, NacosClient, CURRENT_VERSION, 
 
 #[tokio::main]
 async fn main() {
+    // 0. setup tracing log
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "srs_exporter=info,tokio=info,tower_http=info")
+    }
+    tracing_subscriber::fmt::init();
+
     // 1. treat first arg as config file location & parse config
     let f = match std::env::args().nth(1) {
         Some(f) => f,
@@ -21,15 +27,15 @@ async fn main() {
     tokio::spawn(async move {
         let nacos_client = NacosClient::new(&toml_config);
         match nacos_client.register_service().await {
-            Ok(_) => println!("Nacos service registration succeed"),
-            Err(e) => println!("{}", e),
+            Ok(_) => tracing::info!("Nacos service registration succeed"),
+            Err(e) => tracing::error!("{}", e),
         }
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             // process every two seconds
             match nacos_client.clone().ping_pong().await {
-                Ok(_) => println!("Nacos service ping pong succeed"),
-                Err(e) => println!("{}", e),
+                Ok(_) => tracing::info!("Nacos service ping pong succeed"),
+                Err(e) => tracing::error!("{}", e),
             }
         }
     });
@@ -40,9 +46,10 @@ async fn main() {
     // 4. http server
     let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port.unwrap()));
 
-    println!(
+    tracing::info!(
         "Srs Exporter will listen on {}, Current Version is {}",
-        addr, CURRENT_VERSION
+        addr,
+        CURRENT_VERSION
     );
     let app = Router::new()
         .route("/", get(root))
@@ -97,5 +104,5 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    println!("signal received, starting graceful shutdown");
+    tracing::info!("signal received, starting graceful shutdown");
 }
