@@ -1,31 +1,28 @@
 # srs-exporter
 
-Attempt to be a srs exporter.
+1. Collect SRS metrics from API and transform to Prometheus style.
+2. Report SRS metadata to Nacos for service discovery.
 
 Inspired by [srs-exporter](https://github.com/chaoswest-tv/srs-exporter), thank you.
 
-## important
-
-**fake http response**: Be careful with HEADER [no space before]
-
 ## Metrics
 
-| name                 | help                              |
-| -------------------- | --------------------------------- |
-| stream_active_total  | Total amount of active streams    |
-| stream_clients_total | Total amount of connected clients |
+| name                     | help                    |
+| ------------------------ | ----------------------- |
+| srs_stream_active_total  | SRS active streams      |
+| srs_stream_clients_total | SRS connected clients   |
+| srs_cpu_percent          | SRS cpu usage (percent) |
+| srs_mem_percent          | SRS mem usage (percent) |
 
-## Next Step
+## Few Instructions
 
-Consider Collect other important metrics (e.g. host resource status) for load balancing.
-
-## run srs
+### run srs
 
 ```sh
 docker run --rm -it -p 1935:1935 -p 1985:1985 -p 8080:8080 registry.cn-hangzhou.aliyuncs.com/ossrs/srs:4 ./objs/srs -c conf/docker.conf
 ```
 
-## run nacos
+### run nacos
 
 ```sh
 docker run --rm -it -p 8848:8848 -e PREFER_HOST_MODE=hostname -e MODE=standalone nacos/nacos-server:v2.0.4
@@ -37,9 +34,7 @@ docker run --rm -it -p 8848:8848 -e PREFER_HOST_MODE=hostname -e MODE=standalone
 2. `podman cotainer cp [container:]src_file [container:]target_file`
 3. `podman container commit [container] image_name`
 
-## Problem
-
-### WSL reqwest
+## Problems Encountered
 
 1. 裸着使用 tokio::TcpStream，并伪装 HTTP 响应，虽然成功瞒过了浏览器，但是无法被 prometheus 的 scraper 正常识别，所以还是集成了 Web 库[axum](https://github.com/tokio-rs/axum) 【例子很多，后面好好学习一下】
 2. 在 Windows 环境下运行项目，无法使用 reqwest 库访问 WSL 内部运行的程序。【服了，排查了白天。。】

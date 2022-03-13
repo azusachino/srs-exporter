@@ -24,7 +24,7 @@ const NACOS_ERROR_MSG: &str =
 const SRS_ERROR_MSG: &str =
     "Cannot reach SRS server, please check SRS's configuration and the SRS Server";
 
-// Erros that can happen
+// Errors that could happen
 #[derive(Debug)]
 pub enum AppError {
     NacosUnreachable,
