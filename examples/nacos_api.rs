@@ -1,8 +1,8 @@
 // use anyhow::Result;
 // use reqwest::{Client, ClientBuilder};
 
-// const REG_URL: &str = "http://172.31.103.161:18848/nacos/v1/ns/instance?port=1935&healthy=true&ip=172.31.103.161&serviceName=srs&namespaceId=scv&groupName=scv";
-// const BEAT_URL: &str = "http://172.31.103.161:18848/nacos/v1/ns/instance/beat?port=1935&healthy=true&ip=172.31.103.161&serviceName=srs&namespaceId=scv&beat={port=1935, ip='172.31.103.161', weight=0.0, serviceName='srs', cluster='null', metadata=null, scheduled=false, period=0, stopped=false}
+// const REG_URL: &str = "http://localhost:8848/nacos/v1/ns/instance?port=1935&healthy=true&ip=172.31.103.161&serviceName=srs&namespaceId=scv&groupName=scv";
+// const BEAT_URL: &str = "http://localhost:8848/nacos/v1/ns/instance/beat?port=1935&healthy=true&ip=172.31.103.161&serviceName=srs&namespaceId=scv&beat={port=1935, ip='172.31.103.161', weight=0.0, serviceName='srs', cluster='null', metadata=null, scheduled=false, period=0, stopped=false}
 // ";
 
 fn main() {}

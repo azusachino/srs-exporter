@@ -67,8 +67,13 @@ impl SummaryCollector {
     /**
      * Collect Cpu/Mem status
      */
-    pub async fn collect(self) -> Result<(), AppError> {
-        match reqwest::Client::new().get(self.srs_url).send().await {
+    pub async fn collect(&self) -> Result<(), AppError> {
+        match reqwest::Client::new()
+            .get(self.srs_url.clone())
+            .header("Connection", "close")
+            .send()
+            .await
+        {
             Ok(res) => match res.json::<SummaryResponse>().await {
                 Ok(ret) => {
                     let SummaryResponse {

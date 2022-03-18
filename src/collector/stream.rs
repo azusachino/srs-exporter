@@ -72,9 +72,14 @@ impl StreamCollector {
     /**
      * Collect Stream/Client status
      */
-    pub async fn collect(self) -> Result<(), AppError> {
+    pub async fn collect(&self) -> Result<(), AppError> {
         // use match to handle error in different await and transform to custom error for handling
-        match reqwest::Client::new().get(self.srs_url).send().await {
+        match reqwest::Client::new()
+            .get(self.srs_url.clone())
+            .header("Connection", "close")
+            .send()
+            .await
+        {
             Ok(res) => {
                 match res.json::<StreamResponse>().await {
                     Ok(ret) => {

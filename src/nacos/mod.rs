@@ -57,7 +57,12 @@ impl NacosClient {
             ],
         )
         .unwrap();
-        match reqwest::Client::new().post(url).send().await {
+        match reqwest::Client::new()
+            .post(url)
+            .header("Connection", "close")
+            .send()
+            .await
+        {
             Ok(_) => Ok(()),
             Err(_) => Err(AppError::NacosUnreachable),
         }
@@ -84,7 +89,12 @@ impl NacosClient {
                     "http://{}:{}/nacos/v1/ns/instance/beat?namespaceId={}&serviceName={}&beat={}",
                      nacos.host, nacos.port.unwrap(), nacos.namespace_id, svc_name, encoded_beat
                 );
-                match reqwest::Client::new().put(url.as_str()).send().await {
+                match reqwest::Client::new()
+                    .put(url.as_str())
+                    .header("Connection", "close")
+                    .send()
+                    .await
+                {
                     Ok(_) => Ok(()),
                     Err(_) => Err(AppError::NacosUnreachable),
                 }
@@ -108,7 +118,12 @@ impl NacosClient {
             srs.http_port.unwrap()
         );
 
-        match reqwest::Client::new().get(url.as_str()).send().await {
+        match reqwest::Client::new()
+            .get(url.as_str())
+            .header("Connection", "close")
+            .send()
+            .await
+        {
             Ok(_) => Ok(true),
             Err(_) => Err(AppError::SrsUnreachable),
         }
