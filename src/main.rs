@@ -44,7 +44,7 @@ async fn main() {
     let shared_collector = MetricCollector::new(Registry::new(), srs_config);
 
     // 4. http server
-    let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port.unwrap()));
+    let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port));
 
     tracing::info!(
         "Srs Exporter will listen on {}, Current Version is {}",

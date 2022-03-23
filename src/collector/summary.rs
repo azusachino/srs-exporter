@@ -47,9 +47,7 @@ impl SummaryCollector {
         let sc = Self {
             srs_url: format!(
                 "http://{}:{}{}",
-                srs_config.host,
-                srs_config.http_port.unwrap(),
-                BASE_URL
+                srs_config.host, srs_config.http_port, BASE_URL
             ),
             mem_percent: Gauge::with_opts(Opts::new(
                 "srs_mem_percent",

@@ -49,7 +49,7 @@ impl StreamCollector {
             srs_url: format!(
                 "http://{}:{}{}",
                 srs_config.host,
-                srs_config.http_port.unwrap(),
+                srs_config.http_port,
                 BASE_URL
             ),
             total: IntGauge::with_opts(Opts::new(

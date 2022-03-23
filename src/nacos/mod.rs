@@ -37,26 +37,25 @@ impl NacosClient {
 
         let metadata = HashMap::from([
             ("metric_host", app.host),
-            ("metric_port", app.port.unwrap().to_string()),
+            ("metric_port", app.port.to_string()),
             ("metric_path", String::from("/metrics")),
         ]);
         let url = Url::parse_with_params(
             format!(
                 "http://{}:{}/nacos/api/ns/instance",
                 nacos.host,
-                nacos.port.unwrap()
+                nacos.port
             )
             .as_str(),
             &[
                 ("serviceName", DEFAULT_SERVICE_NAME.to_string()),
                 ("ip", srs.host),
-                ("port", srs.rtmp_port.unwrap().to_string()),
+                ("port", srs.rtmp_port.to_string()),
                 ("namespaceId", nacos.namespace_id),
                 ("group", nacos.group_name),
                 ("metadata", json::stringify(metadata)),
             ],
-        )
-        .unwrap();
+        ).unwrap();
         match reqwest::Client::new()
             .post(url)
             .header("Connection", "close")
@@ -76,18 +75,22 @@ impl NacosClient {
             Ok(_) => {
                 let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
                 let metadata = HashMap::from([
+                    ("srs_mode", srs.mode),
                     ("metric_host", app.host),
-                    ("metric_port", app.port.unwrap().to_string()),
+                    ("metric_port", app.port.to_string()),
                     ("metric_path", String::from("/metrics")),
                 ]);
                 // combine group_name with service_name
                 let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
-                let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{}}}", svc_name, srs.host, srs.rtmp_port.unwrap(), json::stringify(metadata));
+                let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{}}}", svc_name, srs.host, srs.rtmp_port, json::stringify(metadata));
                 let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
-                let url =
-                    format!(
+                let url = format!(
                     "http://{}:{}/nacos/v1/ns/instance/beat?namespaceId={}&serviceName={}&beat={}",
-                     nacos.host, nacos.port.unwrap(), nacos.namespace_id, svc_name, encoded_beat
+                    nacos.host,
+                    nacos.port,
+                    nacos.namespace_id,
+                    svc_name,
+                    encoded_beat
                 );
                 match reqwest::Client::new()
                     .put(url.as_str())
@@ -115,7 +118,7 @@ impl NacosClient {
         let url = format!(
             "http://{}:{}/api/v1/summaries",
             srs.host,
-            srs.http_port.unwrap()
+            srs.http_port
         );
 
         match reqwest::Client::new()
