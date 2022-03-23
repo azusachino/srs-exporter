@@ -41,12 +41,7 @@ impl NacosClient {
             ("metric_path", String::from("/metrics")),
         ]);
         let url = Url::parse_with_params(
-            format!(
-                "http://{}:{}/nacos/api/ns/instance",
-                nacos.host,
-                nacos.port
-            )
-            .as_str(),
+            format!("http://{}:{}/nacos/api/ns/instance", nacos.host, nacos.port).as_str(),
             &[
                 ("serviceName", DEFAULT_SERVICE_NAME.to_string()),
                 ("ip", srs.host),
@@ -55,7 +50,8 @@ impl NacosClient {
                 ("group", nacos.group_name),
                 ("metadata", json::stringify(metadata)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
         match reqwest::Client::new()
             .post(url)
             .header("Connection", "close")
@@ -75,10 +71,10 @@ impl NacosClient {
             Ok(_) => {
                 let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
                 let metadata = HashMap::from([
-                    ("srs_mode", srs.mode),
                     ("metric_host", app.host),
                     ("metric_port", app.port.to_string()),
                     ("metric_path", String::from("/metrics")),
+                    ("srs_mode", srs.mode),
                 ]);
                 // combine group_name with service_name
                 let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
@@ -86,11 +82,7 @@ impl NacosClient {
                 let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
                 let url = format!(
                     "http://{}:{}/nacos/v1/ns/instance/beat?namespaceId={}&serviceName={}&beat={}",
-                    nacos.host,
-                    nacos.port,
-                    nacos.namespace_id,
-                    svc_name,
-                    encoded_beat
+                    nacos.host, nacos.port, nacos.namespace_id, svc_name, encoded_beat
                 );
                 match reqwest::Client::new()
                     .put(url.as_str())
@@ -109,17 +101,13 @@ impl NacosClient {
     /**
      * just check srs http api is ok or not
      */
-    async fn check_srs_healthy(&self) -> Result<bool, AppError> {
+    async fn check_srs_healthy(&self) -> Result<(), AppError> {
         let SrsExporterConfig {
             app: _,
             nacos: _,
             srs,
         } = self.srs_exporter_config.clone();
-        let url = format!(
-            "http://{}:{}/api/v1/summaries",
-            srs.host,
-            srs.http_port
-        );
+        let url = format!("http://{}:{}/api/v1/summaries", srs.host, srs.http_port);
 
         match reqwest::Client::new()
             .get(url.as_str())
@@ -127,7 +115,7 @@ impl NacosClient {
             .send()
             .await
         {
-            Ok(_) => Ok(true),
+            Ok(_) => Ok(()),
             Err(_) => Err(AppError::SrsUnreachable),
         }
     }

@@ -38,5 +38,4 @@ WORKDIR /srs
 COPY --from=builder /app/target/release/srs_exporter ./
 
 USER srs:srs
-EXPOSE 9717
 CMD ["/srs/srs_exporter"]
