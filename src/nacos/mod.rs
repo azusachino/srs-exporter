@@ -71,10 +71,10 @@ impl NacosClient {
             Ok(_) => {
                 let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
                 let metadata = HashMap::from([
+                    ("cluster_mode", srs.mode),
                     ("metric_host", app.host),
                     ("metric_port", app.port.to_string()),
                     ("metric_path", String::from("/metrics")),
-                    ("srs_mode", srs.mode),
                 ]);
                 // combine group_name with service_name
                 let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
