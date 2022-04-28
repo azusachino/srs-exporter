@@ -1,11 +1,14 @@
-mod stream;
-mod summary;
-
-use crate::{AppError, SrsConfig};
-use prometheus::{Encoder, Registry, TextEncoder};
 use std::result::Result;
+
+use prometheus::{Encoder, Registry, TextEncoder};
+
 use stream::StreamCollector;
 use summary::SummaryCollector;
+
+use crate::{AppError, SrsConfig};
+
+mod stream;
+mod summary;
 
 /**
  * The Metric Collector, wraps a set of collectors

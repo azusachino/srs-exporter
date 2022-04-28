@@ -1,8 +1,10 @@
-use crate::{AppError, SrsExporterConfig};
-use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
-use reqwest::Url;
 use std::collections::HashMap;
 use std::result::Result;
+
+use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
+use reqwest::Url;
+
+use crate::{AppError, SrsExporterConfig};
 
 const DEFAULT_SERVICE_NAME: &str = "srs";
 const FRAGMENT: &AsciiSet = &CONTROLS
@@ -33,7 +35,7 @@ impl NacosClient {
      * add srs-exporter config in metadata, for nacos client able to fetch data from prometheus [instance]
      */
     pub async fn register_service(&self) -> Result<(), AppError> {
-        let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
+        let SrsExporterConfig { app, nacos, srs, .. } = self.srs_exporter_config.clone();
 
         let metadata = HashMap::from([
             ("metric_host", app.host),
@@ -51,7 +53,7 @@ impl NacosClient {
                 ("metadata", json::stringify(metadata)),
             ],
         )
-        .unwrap();
+            .unwrap();
         match reqwest::Client::new()
             .post(url)
             .header("Connection", "close")
@@ -69,7 +71,7 @@ impl NacosClient {
     pub async fn ping_pong(&self) -> Result<(), AppError> {
         match self.check_srs_healthy().await {
             Ok(_) => {
-                let SrsExporterConfig { app, nacos, srs } = self.srs_exporter_config.clone();
+                let SrsExporterConfig { app, nacos, srs, .. } = self.srs_exporter_config.clone();
                 let metadata = HashMap::from([
                     ("cluster_mode", srs.mode),
                     ("metric_host", app.host),
@@ -106,6 +108,7 @@ impl NacosClient {
             app: _,
             nacos: _,
             srs,
+            ..
         } = self.srs_exporter_config.clone();
         let url = format!("http://{}:{}/api/v1/summaries", srs.host, srs.http_port);
 

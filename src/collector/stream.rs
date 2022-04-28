@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::result::Result;
 
 use prometheus::{IntGauge, Opts, Registry};
@@ -17,7 +18,6 @@ pub struct StreamCollector {
     clients: IntGauge,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct StreamResponse {
     code: i16,
@@ -25,7 +25,6 @@ struct StreamResponse {
     streams: Vec<StreamStatus>,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct StreamStatus {
     // 对齐
@@ -48,9 +47,7 @@ impl StreamCollector {
         let su = Self {
             srs_url: format!(
                 "http://{}:{}{}",
-                srs_config.host,
-                srs_config.http_port,
-                BASE_URL
+                srs_config.host, srs_config.http_port, BASE_URL
             ),
             total: IntGauge::with_opts(Opts::new(
                 "srs_stream_active_total",
