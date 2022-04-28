@@ -36,7 +36,12 @@ struct SystemData {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let ret = reqwest::get("http://localhost:1985/api/v1/summaries/")
+    let client = reqwest::ClientBuilder::new().build()?;
+    let ret = client
+        .get("http://localhost:1985/api/v1/summaries")
+        // with Connection:close header, close connection after the request is completed
+        .header("Connection", "close")
+        .send()
         .await?
         .text()
         .await?;

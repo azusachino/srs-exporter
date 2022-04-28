@@ -1,10 +1,14 @@
+use std::env;
+use std::net::SocketAddr;
+
 use axum::response::IntoResponse;
 use axum::{extract::Extension, response::Html, routing::get, Router};
 use prometheus::Registry;
-use std::net::SocketAddr;
 use tokio::signal;
 
-use srs_exporter::{parse_config, MetricCollector, NacosClient, CURRENT_VERSION, DEFAULT_CONFIG};
+use srs_exporter::{
+    MetricCollector, NacosClient, SrsExporterConfig, CURRENT_VERSION, DEFAULT_CONFIG,
+};
 
 #[tokio::main]
 async fn main() {
@@ -14,12 +18,15 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    // 1. treat first arg as config file location & parse config
+    // 1. treat first arg as config file relative location & parse config
     let f = match std::env::args().nth(1) {
         Some(f) => f,
         None => DEFAULT_CONFIG.to_string(),
     };
-    let toml_config = parse_config(f).unwrap();
+    let config_location = env::current_dir().unwrap().join(f);
+    tracing::info!("Configuration file location: {}", config_location.display());
+
+    let toml_config = SrsExporterConfig::from_disk(config_location).unwrap();
     let app_config = toml_config.app.clone();
     let srs_config = toml_config.srs.clone();
 
@@ -44,7 +51,7 @@ async fn main() {
     let shared_collector = MetricCollector::new(Registry::new(), srs_config);
 
     // 4. http server
-    let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port.unwrap()));
+    let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port));
 
     tracing::info!(
         "Srs Exporter will listen on {}, Current Version is {}",

@@ -1,30 +1,42 @@
-/**
- * SRS Exporter
- * Fetch SRS Status by http request, integrate with prometheus client.
- */
-use anyhow::Result;
+//! SRS Exporter
+//!
+//! Fetch SRS Status by http request, integrate with prometheus client.
+
+use std::fmt::{self, Display};
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+use std::str::FromStr;
+
+use anyhow::{Context, Result};
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::Json;
+use axum::response::{IntoResponse, Response};
+use serde::{Deserializer, Serializer};
+use serde_derive::{Deserialize, Serialize};
+use serde_json::json;
+use toml::{self, Value};
+use toml::value::Table;
+
 pub use collector::MetricCollector;
 pub use nacos::NacosClient;
-use serde_derive::Deserialize;
-use serde_json::json;
-use std::env;
-use std::fmt::{self, Display};
+
+use crate::utils::TomlExt;
 
 mod collector;
 mod nacos;
+mod utils;
 
 pub const DEFAULT_CONFIG: &str = "config.toml";
-pub const CURRENT_VERSION: &str = "0.0.3";
+/// The current version of `tsubame`
+pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const NACOS_ERROR_MSG: &str =
-    "Cannot reach Nacos server, please check srs-exporter's config.toml and the Nacos server";
+    "Cannot reach Nacos server, please check Nacos configuration and the Nacos server";
 const SRS_ERROR_MSG: &str =
-    "Cannot reach SRS server, please check SRS's configuration and the SRS Server";
+    "Cannot reach SRS server, please check SRS configuration and the SRS Server";
 
-// Errors that could happen
+// Errors that might happen
 #[derive(Debug)]
 pub enum AppError {
     NacosUnreachable,
@@ -32,7 +44,7 @@ pub enum AppError {
 }
 
 /**
- * HTTP Response
+ * HTTP Response Wrapper for AppError
  */
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
@@ -40,13 +52,12 @@ impl IntoResponse for AppError {
             AppError::NacosUnreachable => (StatusCode::INTERNAL_SERVER_ERROR, NACOS_ERROR_MSG),
             AppError::SrsUnreachable => (StatusCode::INTERNAL_SERVER_ERROR, SRS_ERROR_MSG),
         };
-
-        (status, Json(json!({ "error": msg }))).into_response()
+        (status, Json(json!({ "tip": msg }))).into_response()
     }
 }
 
 /**
- * Println
+ * Println Wrapper for AppError
  */
 impl Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -57,140 +68,177 @@ impl Display for AppError {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Default)]
+/// SRS Exporter Configuration
+#[derive(Clone, Debug, PartialEq)]
 pub struct SrsExporterConfig {
+    // current app configuration
     pub app: AppConfig,
+    // srs configuration
     pub srs: SrsConfig,
+    // nacos configuration
     pub nacos: NacosConfig,
+    rest: Value,
 }
 
-#[derive(Clone, Debug, Deserialize, Default)]
+impl Default for SrsExporterConfig {
+    fn default() -> Self {
+        Self {
+            app: AppConfig::default(),
+            srs: SrsConfig::default(),
+            nacos: NacosConfig::default(),
+            rest: Value::Table(Table::default()),
+        }
+    }
+}
+
+impl FromStr for SrsExporterConfig {
+    type Err = anyhow::Error;
+
+    fn from_str(src: &str) -> Result<Self> {
+        toml::from_str(src).with_context(|| "Invalid configuration file")
+    }
+}
+
+impl SrsExporterConfig {
+    /**
+     * Parse config from config.toml
+     * Update: remove all stupid param checks
+     */
+    pub fn from_disk<P: AsRef<Path>>(config_file: P) -> Result<Self> {
+        let mut buffer = String::new();
+        File::open(config_file)
+            .with_context(|| "Unable to open the configuration file")?
+            .read_to_string(&mut buffer)
+            .with_context(|| "Couldn't read the file")?;
+
+        SrsExporterConfig::from_str(&buffer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for SrsExporterConfig {
+    fn deserialize<D: Deserializer<'de>>(de: D) -> std::result::Result<Self, D::Error> {
+        let raw = Value::deserialize(de)?;
+        use serde::de::Error;
+
+        let mut table = match raw {
+            Value::Table(t) => t,
+            _ => {
+                return Err(Error::custom("A config file should always be a toml table"));
+            }
+        };
+
+        let app: AppConfig = table
+            .remove("app")
+            .map(|app| app.try_into().map_err(Error::custom))
+            .transpose()?
+            .unwrap_or_default();
+        let srs: SrsConfig = table
+            .remove("srs")
+            .map(|srs| srs.try_into().map_err(Error::custom))
+            .transpose()?
+            .unwrap_or_default();
+        let nacos: NacosConfig = table
+            .remove("nacos")
+            .map(|nacos| nacos.try_into().map_err(Error::custom))
+            .transpose()?
+            .unwrap_or_default();
+
+        Ok(SrsExporterConfig {
+            app,
+            srs,
+            nacos,
+            rest: Value::Table(table),
+        })
+    }
+}
+
+impl serde::Serialize for SrsExporterConfig {
+    fn serialize<S: Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
+        let mut table = self.rest.clone();
+
+        let app_config = Value::try_from(&self.app).expect("should always be serializable");
+        table.insert("app", app_config);
+
+        let srs_config = Value::try_from(&self.srs).expect("should always be serializable");
+        table.insert("srs", srs_config);
+
+        let nacos_config = Value::try_from(&self.nacos).expect("should always be serializable");
+        table.insert("nacos", nacos_config);
+
+        table.serialize(s)
+    }
+}
+
+/**
+ * App Config
+ */
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AppConfig {
     /**
      * Srs Exporter Running port [will report to nacos]
      */
-    pub port: Option<u16>,
+    pub port: u16,
     /**
      * Srs Exporter's host [will report to nacos]
      */
     pub host: String,
 }
 
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            port: 9707,
+            host: String::from("0.0.0.0"),
+        }
+    }
+}
+
 /**
  * SRS Config
  */
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SrsConfig {
-    pub http_port: Option<u16>,
-    pub rtmp_port: Option<u16>,
+    /**
+     * Srs host
+     */
     pub host: String,
+    /**
+     * origin or edge [will report to nacos]
+     */
+    pub mode: String,
+    pub rtmp_port: u16,
+    pub http_port: u16,
+}
+
+impl Default for SrsConfig {
+    fn default() -> Self {
+        Self {
+            host: String::from("127.0.0.1"),
+            mode: String::from("edge"),
+            rtmp_port: 1935,
+            http_port: 1985,
+        }
+    }
 }
 
 /**
  * Nacos Config
  */
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NacosConfig {
-    pub port: Option<u16>,
     pub host: String,
+    pub port: u16,
     pub namespace_id: String,
     pub group_name: String,
 }
 
-/**
- * Parse config from config.toml
- */
-pub fn parse_config(config: String) -> Result<SrsExporterConfig> {
-    // try read from config
-    let mut toml_config: SrsExporterConfig = match std::fs::read_to_string(config) {
-        Ok(string) => toml::from_str(&string)?,
-        // no config file, create default
-        Err(_) => SrsExporterConfig::default(),
-    };
-
-    // check config exists, if not try read from env
-    if toml_config.app.host.is_empty() {
-        match env::var("SRS_EXPORTER_HOST") {
-            Ok(host) => toml_config.app.host = host,
-            Err(_) => {
-                toml_config.app.host = String::from("localhost");
-            }
+impl Default for NacosConfig {
+    fn default() -> Self {
+        Self {
+            host: String::from("127.0.0.1"),
+            port: 8848,
+            namespace_id: String::from("public"),
+            group_name: String::from("public"),
         }
     }
-
-    match toml_config.app.port {
-        Some(_) => {}
-        None => match env::var("SRS_EXPORTER_PORT") {
-            Ok(port) => toml_config.app.port = Some(port.parse::<u16>().unwrap()),
-            Err(_) => {
-                toml_config.app.port = Some(9717);
-            }
-        },
-    }
-
-    if toml_config.srs.host.is_empty() {
-        match env::var("SRS_HOST") {
-            Ok(host) => toml_config.srs.host = host,
-            Err(_) => {
-                toml_config.srs.host = String::from("localhost");
-            }
-        }
-    }
-
-    match toml_config.srs.http_port {
-        Some(_) => {}
-        None => match env::var("SRS_HTTP_PORT") {
-            Ok(http_port) => toml_config.srs.http_port = Some(http_port.parse::<u16>().unwrap()),
-            Err(_) => {
-                toml_config.srs.http_port = Some(1985);
-            }
-        },
-    }
-
-    match toml_config.srs.rtmp_port {
-        Some(_) => {}
-        None => match env::var("SRS_RTMP_PORT") {
-            Ok(rtmp_port) => toml_config.srs.rtmp_port = Some(rtmp_port.parse::<u16>().unwrap()),
-            Err(_) => {
-                toml_config.srs.rtmp_port = Some(1935);
-            }
-        },
-    }
-
-    if toml_config.nacos.host.is_empty() {
-        match env::var("NACOS_HOST") {
-            Ok(host) => toml_config.nacos.host = host,
-            Err(_) => {
-                toml_config.nacos.host = String::from("localhost");
-            }
-        }
-    }
-
-    match toml_config.nacos.port {
-        Some(_) => {}
-        None => match env::var("SRS_RTMP_PORT") {
-            Ok(port) => toml_config.nacos.port = Some(port.parse::<u16>().unwrap()),
-            Err(_) => {
-                toml_config.nacos.port = Some(8848);
-            }
-        },
-    }
-    if toml_config.nacos.namespace_id.is_empty() {
-        match env::var("NACOS_NAMESPACE_ID") {
-            Ok(namespace_id) => toml_config.nacos.namespace_id = namespace_id,
-            Err(_) => {
-                toml_config.nacos.namespace_id = String::from("public");
-            }
-        }
-    }
-    if toml_config.nacos.group_name.is_empty() {
-        match env::var("NACOS_HOST") {
-            Ok(group_name) => toml_config.nacos.group_name = group_name,
-            Err(_) => {
-                toml_config.nacos.group_name = String::from("DEFAULT_GROUP");
-            }
-        }
-    }
-
-    Ok(toml_config)
 }

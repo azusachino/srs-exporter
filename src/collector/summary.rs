@@ -1,7 +1,10 @@
-use crate::{AppError, SrsConfig};
+#![allow(unused)]
+use std::result::Result;
+
 use prometheus::{Gauge, Opts, Registry};
 use serde_derive::Deserialize;
-use std::result::Result;
+
+use crate::{AppError, SrsConfig};
 
 const BASE_URL: &str = "/api/v1/summaries";
 
@@ -12,7 +15,6 @@ pub struct SummaryCollector {
     cpu_percent: Gauge,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct SummaryResponse {
     code: i16,
@@ -20,7 +22,6 @@ struct SummaryResponse {
     data: SummaryData,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct SummaryData {
     ok: bool,
@@ -32,7 +33,6 @@ struct SummaryData {
     status: SelfStatus,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct SelfStatus {
     mem_percent: f64,
@@ -47,9 +47,7 @@ impl SummaryCollector {
         let sc = Self {
             srs_url: format!(
                 "http://{}:{}{}",
-                srs_config.host,
-                srs_config.http_port.unwrap(),
-                BASE_URL
+                srs_config.host, srs_config.http_port, BASE_URL
             ),
             mem_percent: Gauge::with_opts(Opts::new(
                 "srs_mem_percent",
@@ -67,8 +65,13 @@ impl SummaryCollector {
     /**
      * Collect Cpu/Mem status
      */
-    pub async fn collect(self) -> Result<(), AppError> {
-        match reqwest::Client::new().get(self.srs_url).send().await {
+    pub async fn collect(&self) -> Result<(), AppError> {
+        match reqwest::Client::new()
+            .get(self.srs_url.clone())
+            .header("Connection", "close")
+            .send()
+            .await
+        {
             Ok(res) => match res.json::<SummaryResponse>().await {
                 Ok(ret) => {
                     let SummaryResponse {

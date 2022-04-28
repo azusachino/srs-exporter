@@ -3,7 +3,9 @@
 1. Collect SRS metrics from API and transform to Prometheus style.
 2. Report SRS metadata to Nacos for service discovery.
 
-Inspired by [srs-exporter](https://github.com/chaoswest-tv/srs-exporter), thank you.
+Inspired by [srs-exporter](https://github.com/chaoswest-tv/srs-exporter), thanks.
+
+## Current Version: 1.0.0
 
 ## Metrics
 
@@ -36,8 +38,8 @@ docker run --rm -it -p 8848:8848 -e PREFER_HOST_MODE=hostname -e MODE=standalone
 
 ## Problems Encountered
 
-1. 裸着使用 tokio::TcpStream，并伪装 HTTP 响应，虽然成功瞒过了浏览器，但是无法被 prometheus 的 scraper 正常识别，所以还是集成了 Web 库[axum](https://github.com/tokio-rs/axum) 【例子很多，后面好好学习一下】
-2. 在 Windows 环境下运行项目，无法使用 reqwest 库访问 WSL 内部运行的程序。【服了，排查了白天。。】
+1. 裸着使用 tokio::TcpStream，并伪装 HTTP 响应，虽然成功瞒过了浏览器，但是无法被 prometheus 的 scraper 正常识别，所以还是集成了 Web 库[axum](https://github.com/tokio-rs/axum)
+2. 在 Windows 环境下运行项目，无法使用 reqwest 库访问 WSL 内部运行的程序
 
 ## Reference
 

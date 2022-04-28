@@ -4,8 +4,9 @@ host = "localhost"
 
 [srs]
 host = "localhost"
-http_port = 1985
+mode = "origin"
 rtmp_port = 1935
+http_port = 1985
 
 [nacos]
 host = "localhost"

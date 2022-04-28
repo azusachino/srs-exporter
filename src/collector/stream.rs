@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::result::Result;
 
 use prometheus::{IntGauge, Opts, Registry};
@@ -17,7 +18,6 @@ pub struct StreamCollector {
     clients: IntGauge,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct StreamResponse {
     code: i16,
@@ -25,7 +25,6 @@ struct StreamResponse {
     streams: Vec<StreamStatus>,
 }
 
-#[allow(unused)]
 #[derive(Deserialize, Debug, Clone)]
 struct StreamStatus {
     // 对齐
@@ -48,9 +47,7 @@ impl StreamCollector {
         let su = Self {
             srs_url: format!(
                 "http://{}:{}{}",
-                srs_config.host,
-                srs_config.http_port.unwrap(),
-                BASE_URL
+                srs_config.host, srs_config.http_port, BASE_URL
             ),
             total: IntGauge::with_opts(Opts::new(
                 "srs_stream_active_total",
@@ -72,9 +69,14 @@ impl StreamCollector {
     /**
      * Collect Stream/Client status
      */
-    pub async fn collect(self) -> Result<(), AppError> {
+    pub async fn collect(&self) -> Result<(), AppError> {
         // use match to handle error in different await and transform to custom error for handling
-        match reqwest::Client::new().get(self.srs_url).send().await {
+        match reqwest::Client::new()
+            .get(self.srs_url.clone())
+            .header("Connection", "close")
+            .send()
+            .await
+        {
             Ok(res) => {
                 match res.json::<StreamResponse>().await {
                     Ok(ret) => {
