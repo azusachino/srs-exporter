@@ -199,23 +199,28 @@ impl Default for AppConfig {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SrsConfig {
     /**
-     * Srs host
-     */
-    pub host: String,
-    /**
      * origin or edge [will report to nacos]
      */
     pub mode: String,
+    /**
+     * Srs host for external service
+     */
+    pub domain: String,
     pub rtmp_port: u16,
+    /**
+     * Srs host for internal service
+     */
+    pub host: String,
     pub http_port: u16,
 }
 
 impl Default for SrsConfig {
     fn default() -> Self {
         Self {
-            host: String::from("127.0.0.1"),
             mode: String::from("edge"),
+            domain: String::from("127.0.0.1"),
             rtmp_port: 1935,
+            host: String::from("127.0.0.1"),
             http_port: 1985,
         }
     }
