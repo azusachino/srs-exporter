@@ -10,13 +10,13 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use axum::http::StatusCode;
-use axum::Json;
 use axum::response::{IntoResponse, Response};
+use axum::Json;
 use serde::{Deserializer, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::json;
-use toml::{self, Value};
 use toml::value::Table;
+use toml::{self, Value};
 
 pub use collector::MetricCollector;
 pub use nacos::NacosClient;
@@ -32,14 +32,16 @@ pub const DEFAULT_CONFIG: &str = "config.toml";
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const NACOS_ERROR_MSG: &str =
-    "Cannot reach Nacos server, please check Nacos configuration and the Nacos server";
+    "Cannot reach Nacos server, Please check Nacos configuration and the Nacos server";
 const SRS_ERROR_MSG: &str =
-    "Cannot reach SRS server, please check SRS configuration and the SRS Server";
+    "Cannot reach SRS server, Please check SRS configuration and the SRS Server";
 
 // Errors that might happen
 #[derive(Debug)]
 pub enum AppError {
+    // Nacos 无法连接
     NacosUnreachable,
+    // SRS 无法连接
     SrsUnreachable,
 }
 
@@ -199,23 +201,28 @@ impl Default for AppConfig {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SrsConfig {
     /**
-     * Srs host
-     */
-    pub host: String,
-    /**
      * origin or edge [will report to nacos]
      */
     pub mode: String,
+    /**
+     * Srs host for external service
+     */
+    pub domain: String,
     pub rtmp_port: u16,
+    /**
+     * Srs host for internal service
+     */
+    pub host: String,
     pub http_port: u16,
 }
 
 impl Default for SrsConfig {
     fn default() -> Self {
         Self {
-            host: String::from("127.0.0.1"),
             mode: String::from("edge"),
+            domain: String::from("127.0.0.1"),
             rtmp_port: 1935,
+            host: String::from("127.0.0.1"),
             http_port: 1985,
         }
     }
@@ -226,19 +233,26 @@ impl Default for SrsConfig {
  */
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NacosConfig {
+    // 是否开启认证
+    pub auth: bool,
     pub host: String,
     pub port: u16,
     pub namespace_id: String,
     pub group_name: String,
+    pub username: String,
+    pub password: String,
 }
 
 impl Default for NacosConfig {
     fn default() -> Self {
         Self {
+            auth: false,
             host: String::from("127.0.0.1"),
             port: 8848,
             namespace_id: String::from("public"),
             group_name: String::from("public"),
+            username: String::from("nacos"),
+            password: String::from("nacos"),
         }
     }
 }

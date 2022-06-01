@@ -5,12 +5,7 @@ use srs_exporter::{AppError, MetricCollector, SrsConfig};
 #[tokio::main]
 async fn main() -> std::result::Result<(), AppError> {
     let r = Registry::new();
-    let srs_config = SrsConfig {
-        host: "localhost".to_string(),
-        mode: "edge".to_string(),
-        http_port: 1985,
-        rtmp_port: 1935,
-    };
+    let srs_config = SrsConfig::default();
     let mc = MetricCollector::new(r, srs_config);
 
     let body = mc.collect().await?;

@@ -1,15 +1,25 @@
 [app]
-port = 9717
+# 0.0.0.0 for docker
 host = "localhost"
+port = 9717
 
 [srs]
-host = "localhost"
-mode = "origin"
+# 区分 SRS 的源站和边缘站
+mode = "edge"
+# domain + rtmp_port (external service)
+domain = "localhost"
 rtmp_port = 1935
+# host + http_port (internal service)
+host = "localhost"
 http_port = 1985
 
 [nacos]
-host = "localhost"
-port = 8848
+# 默认不开启认证
+auth = false
+host = "172.31.103.161"
+port = 18848
 namespace_id = "public"
-group_name = "DEFAULT_GROUP"
+group_name = "public"
+# 可选的用户名密码
+username = "nacos"
+password = "nacos"
