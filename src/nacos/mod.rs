@@ -40,13 +40,15 @@ impl NacosClient {
         } = self.srs_exporter_config.clone();
 
         let metadata = HashMap::from([
+            ("cluster_mode", srs.mode),
+            ("intranet_host", srs.host),
             ("metric_host", app.host),
             ("metric_port", app.port.to_string()),
             ("metric_path", String::from("/metrics")),
         ]);
         let mut params = vec![
             ("serviceName", DEFAULT_SERVICE_NAME.to_string()),
-            ("ip", srs.host),
+            ("ip", srs.domain),
             ("port", srs.rtmp_port.to_string()),
             ("namespaceId", nacos.namespace_id),
             ("group", nacos.group_name),
@@ -83,13 +85,17 @@ impl NacosClient {
                     app, nacos, srs, ..
                 } = self.srs_exporter_config.clone();
                 let metadata = HashMap::from([
+                    // origin or edge
                     ("cluster_mode", srs.mode),
+                    // srs host used inside servers
+                    ("intranet_host", srs.host),
                     ("metric_host", app.host),
                     ("metric_port", app.port.to_string()),
                     ("metric_path", String::from("/metrics")),
                 ]);
                 // combine group_name with service_name
                 let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
+                // srs domain for dispatching to internet users
                 let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{}}}", svc_name, srs.domain, srs.rtmp_port, json::stringify(metadata));
                 let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
                 let mut params = vec![
@@ -114,6 +120,7 @@ impl NacosClient {
 
                 match reqwest::Client::new()
                     .put(url)
+                    // connection no further usage
                     .header("Connection", "close")
                     .send()
                     .await

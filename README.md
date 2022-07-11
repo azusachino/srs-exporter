@@ -5,7 +5,7 @@
 
 Inspired by [srs-exporter](https://github.com/chaoswest-tv/srs-exporter), thanks.
 
-## Current Version: 1.0.0
+## Current Version: [v1.1.0](CHANGELOG.md)
 
 ## Metrics
 

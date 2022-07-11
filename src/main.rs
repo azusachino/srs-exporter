@@ -50,7 +50,7 @@ async fn main() {
     // 3. create shared_state which will be MetricCollector
     let shared_collector = MetricCollector::new(Registry::new(), srs_config);
 
-    // 4. http server
+    // 4. http server (always start with 0.0.0.0)
     let addr = SocketAddr::from(([0, 0, 0, 0], app_config.port));
 
     tracing::info!(
@@ -60,12 +60,6 @@ async fn main() {
     );
     let app = Router::new()
         .route("/", get(root))
-        // .route(
-        //     "/slow",
-        //     get(|| async {
-        //         tokio::time::sleep(Duration::from_secs(1)).await;
-        //     }),
-        // )
         .route("/metrics", get(collect))
         .layer(Extension(shared_collector));
     axum::Server::bind(&addr)

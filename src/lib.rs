@@ -190,7 +190,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             port: 9707,
-            host: String::from("0.0.0.0"),
+            host: String::from("127.0.0.1"),
         }
     }
 }
