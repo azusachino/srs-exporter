@@ -72,7 +72,13 @@ impl NacosClient {
             .send()
             .await
         {
-            Ok(_) => Ok(()),
+            Ok(r) => {
+                if r.status() != 200 {
+                    let txt = r.text().await.unwrap();
+                    tracing::error!("nacos srs registration result {}", txt);
+                }
+                Ok(())
+            }
             Err(_) => Err(AppError::NacosUnreachable),
         }
     }
@@ -135,7 +141,7 @@ impl NacosClient {
                     Ok(r) => {
                         if r.status() != 200 {
                             let txt = r.text().await.unwrap();
-                            tracing::error!("ping result {}", txt);
+                            tracing::error!("nacos ping pong result {}", txt);
                         }
                         Ok(())
                     }
@@ -164,7 +170,13 @@ impl NacosClient {
             .send()
             .await
         {
-            Ok(_) => Ok(()),
+            Ok(r) => {
+                if r.status() != 200 {
+                    let txt = r.text().await.unwrap();
+                    tracing::error!("check srs healthy result {}", txt);
+                }
+                Ok(())
+            }
             Err(_) => Err(AppError::SrsUnreachable),
         }
     }
