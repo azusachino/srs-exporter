@@ -1,22 +1,16 @@
 use std::collections::HashMap;
 use std::result::Result;
 
-use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use reqwest::Url;
 
 use crate::{AppError, SrsExporterConfig};
 
-const DEFAULT_SERVICE_NAME: &str = "srs";
-const FRAGMENT: &AsciiSet = &CONTROLS
-    .add(b' ')
-    .add(b'"')
-    .add(b'{')
-    .add(b'}')
-    .add(b':')
-    .add(b',');
+const SRS: &str = "srs";
 
 /**
  * Nacos Client
+ *
+ * @see https://nacos.io/zh-cn/docs/open-api.html
  */
 #[derive(Clone, Debug)]
 pub struct NacosClient {
@@ -40,30 +34,38 @@ impl NacosClient {
         } = self.srs_exporter_config.clone();
 
         let metadata = HashMap::from([
+            // srs origin or edge
             ("cluster_mode", srs.mode),
+            // intranet host (docker network)
             ("intranet_host", srs.host),
+            // srs-exporter host (prometheus scrape)
             ("metric_host", app.host),
             ("metric_port", app.port.to_string()),
-            ("metric_path", String::from("/metrics")),
         ]);
         let mut params = vec![
-            ("serviceName", DEFAULT_SERVICE_NAME.to_string()),
+            ("serviceName", SRS.to_string()),
             ("ip", srs.domain),
             ("port", srs.rtmp_port.to_string()),
             ("namespaceId", nacos.namespace_id),
-            ("group", nacos.group_name),
+            ("groupName", nacos.group_name),
             ("metadata", json::stringify(metadata)),
         ];
         // 如果Nacos开启了认证
-        if nacos.auth {
-            params.push(("username", nacos.username));
-            params.push(("password", nacos.password));
+        match nacos.auth {
+            Some(auth) => {
+                if auth {
+                    params.push(("username", nacos.username.unwrap_or(String::from("nacos"))));
+                    params.push(("password", nacos.password.unwrap_or(String::from("nacos"))));
+                }
+            }
+            None => {}
         }
         let url = Url::parse_with_params(
-            format!("http://{}:{}/nacos/api/ns/instance", nacos.host, nacos.port).as_str(),
+            format!("http://{}:{}/nacos/v1/ns/instance", nacos.host, nacos.port).as_str(),
             &params,
         )
         .unwrap();
+
         match reqwest::Client::new()
             .post(url)
             .header("Connection", "close")
@@ -91,22 +93,27 @@ impl NacosClient {
                     ("intranet_host", srs.host),
                     ("metric_host", app.host),
                     ("metric_port", app.port.to_string()),
-                    ("metric_path", String::from("/metrics")),
                 ]);
                 // combine group_name with service_name
-                let svc_name = format!("{}@@{}", nacos.group_name, DEFAULT_SERVICE_NAME);
+                let svc_name = format!("{}@@{}", nacos.group_name, SRS);
                 // srs domain for dispatching to internet users
                 let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{}}}", svc_name, srs.domain, srs.rtmp_port, json::stringify(metadata));
-                let encoded_beat = utf8_percent_encode(&beat, FRAGMENT).to_string();
-                let mut params = vec![
-                    ("namespaceId", nacos.namespace_id),
-                    ("serviceName", svc_name),
-                    ("beat", encoded_beat),
-                ];
-                // 如果Nacos开启了认证
-                if nacos.auth {
-                    params.push(("username", nacos.username));
-                    params.push(("password", nacos.password));
+                let mut params = vec![("serviceName", svc_name), ("beat", beat)];
+                // 如果 Nacos 开启了认证
+                match nacos.auth {
+                    Some(auth) => {
+                        if auth {
+                            params.push((
+                                "username",
+                                nacos.username.unwrap_or(String::from("nacos")),
+                            ));
+                            params.push((
+                                "password",
+                                nacos.password.unwrap_or(String::from("nacos")),
+                            ));
+                        }
+                    }
+                    None => {}
                 }
                 let url = Url::parse_with_params(
                     format!(
@@ -125,7 +132,13 @@ impl NacosClient {
                     .send()
                     .await
                 {
-                    Ok(_) => Ok(()),
+                    Ok(r) => {
+                        if r.status() != 200 {
+                            let txt = r.text().await.unwrap();
+                            tracing::error!("ping result {}", txt);
+                        }
+                        Ok(())
+                    }
                     Err(_) => Err(AppError::NacosUnreachable),
                 }
             }

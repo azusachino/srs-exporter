@@ -234,25 +234,25 @@ impl Default for SrsConfig {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NacosConfig {
     // 是否开启认证
-    pub auth: bool,
+    pub auth: Option<bool>,
     pub host: String,
     pub port: u16,
     pub namespace_id: String,
     pub group_name: String,
-    pub username: String,
-    pub password: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
 }
 
 impl Default for NacosConfig {
     fn default() -> Self {
         Self {
-            auth: false,
+            auth: None,
             host: String::from("127.0.0.1"),
             port: 8848,
             namespace_id: String::from("public"),
             group_name: String::from("public"),
-            username: String::from("nacos"),
-            password: String::from("nacos"),
+            username: None,
+            password: None,
         }
     }
 }
