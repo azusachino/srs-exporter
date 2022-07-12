@@ -104,7 +104,12 @@ impl NacosClient {
                 let svc_name = format!("{}@@{}", nacos.group_name, SRS);
                 // srs domain for dispatching to internet users
                 let beat = format!("{{\"serviceName\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"weight\":1,\"metadata\":{}}}", svc_name, srs.domain, srs.rtmp_port, json::stringify(metadata));
-                let mut params = vec![("serviceName", svc_name), ("beat", beat)];
+                let mut params = vec![
+                    // 必须指定 namespace (默认 public)
+                    ("namespaceId", nacos.namespace_id),
+                    ("serviceName", svc_name),
+                    ("beat", beat),
+                ];
                 // 如果 Nacos 开启了认证
                 match nacos.auth {
                     Some(auth) => {
