@@ -9,7 +9,7 @@ repository = "https://github.com/azusachino/srs-exporter"
 
 [dependencies]
 anyhow = "1.0"
-axum = "0.5"
+axum = "0.4"
 json = "0.12"
 prometheus = "0.13"
 reqwest = { version = "0.11", features = ["json"] }
@@ -17,7 +17,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 toml = "0.5"
-tokio = { version = "1.19", features = ["full"] }
+tokio = { version = "1.17", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

@@ -14,12 +14,13 @@ host = "localhost"
 http_port = 1985
 
 [nacos]
-# 默认不开启认证
-auth = false
+
 host = "172.31.103.161"
 port = 18848
 namespace_id = "public"
 group_name = "public"
+# 默认不开启认证
+auth = false
 # 可选的用户名密码
 username = "nacos"
 password = "nacos"
