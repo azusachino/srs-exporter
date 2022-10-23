@@ -1,0 +1,16 @@
+app:
+  host: localhost
+  port: 9717
+srs:
+  mode: edge
+  domain: localhost
+  rtmpPort: 1935
+  host: localhost
+  httpPort: 1985
+nacos:
+  servers:
+    - host: 172.31.103.161
+      port: 18848
+  namespaceId: public
+  groupName: public
+  auth: false

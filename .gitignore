@@ -11,3 +11,5 @@ Cargo.lock
 .idea/
 vendor/
 *-dev.toml
+*.log
+*.exe

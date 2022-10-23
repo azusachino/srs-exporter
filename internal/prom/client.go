@@ -24,6 +24,7 @@ var (
 )
 
 func InitMetrics() {
+	// TODO
 	prometheus.MustRegister(StreamActiveTotalGauge)
 	prometheus.MustRegister(StreamClientTotalGauge)
 }

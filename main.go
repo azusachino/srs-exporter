@@ -3,17 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/azusachino/srs-exporter/internal/log"
 	"github.com/azusachino/srs-exporter/internal/nacos"
 	"github.com/azusachino/srs-exporter/internal/prom"
-	"github.com/azusachino/srs-exporter/internal/toml"
-	"go.uber.org/zap"
+	"github.com/azusachino/srs-exporter/internal/yml"
 
 	"github.com/gin-gonic/gin"
 )
 
 var cfgFile string
+var err error
 
 func init() {
 	// treat first arg as config file relative location & parse config
@@ -21,17 +23,22 @@ func init() {
 	if len(args) > 1 {
 		cfgFile = args[1]
 	} else {
-		cfgFile = "config.toml"
+		cfgFile = "config.yaml"
 	}
 }
 
 func main() {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	log.Sugar = logger.Sugar()
+
+	err = log.InitLogrus()
+	if err != nil {
+		fmt.Println("failed to init logger")
+		os.Exit(1)
+	}
 
 	// 0. load the config
-	cfg := toml.GetCfg(cfgFile)
+	// log.Sugar.Infof("config location: %s \n", cfgFile)
+	cfg := yml.GetCfg(cfgFile)
+	gin.SetMode(gin.ReleaseMode)
 	srv := gin.Default()
 
 	// 1. init nacos client, fetch srs information, register to nacos
@@ -49,10 +56,17 @@ func main() {
 		ret["tip"] = "Please go to `/metrics`"
 		ctx.JSON(200, ret)
 	})
+	
 	// 4. goroutine to check srs status (deregister)
+	go func(config *yml.SrsExporterConfig) {
+		for {
+			time.Sleep(2 * time.Second)
+			nacos.CheckInstance(config)
+		}
+	}(&cfg)
 
 	// 5. start gin server
 	addr := fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port)
 	srv.Run(addr)
-	log.Sugar.Infoln("SRS Exporter started in %s", addr)
+	log.Logger.Info("SRS Exporter started in %s", addr)
 }
