@@ -1,6 +1,10 @@
 package prom
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
 
 var (
 	StreamActiveTotalGauge = prometheus.NewGaugeVec(
@@ -19,15 +23,14 @@ var (
 	)
 )
 
-func init() {
+func InitMetrics() {
 	prometheus.MustRegister(StreamActiveTotalGauge)
 	prometheus.MustRegister(StreamClientTotalGauge)
 }
 
-func Collect() {
-	go func() {
-		for {
-			// TODO
-		}
-	}()
+func GetHttpHandler() gin.HandlerFunc {
+	h := promhttp.Handler()
+	return func(ctx *gin.Context) {
+		h.ServeHTTP(ctx.Writer, ctx.Request)
+	}
 }

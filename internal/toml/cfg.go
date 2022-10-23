@@ -1,10 +1,9 @@
 package toml
 
 import (
+	"github.com/pelletier/go-toml/v2"
 	"log"
 	"os"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 type SrsExporterConfig struct {
@@ -27,12 +26,12 @@ type SrsConfig struct {
 }
 
 type NacosConfig struct {
-	Servers   []HostPort
+	Servers     []HostPort
 	NamespaceId string
-	GroupName string
-	Auth      bool
-	Username  string
-	Password  string
+	GroupName   string
+	Auth        bool
+	Username    string
+	Password    string
 }
 
 type HostPort struct {
@@ -42,8 +41,7 @@ type HostPort struct {
 
 // Read Cfg from config-file
 func GetCfg(f string) SrsExporterConfig {
-	//    f,err :=	os.OpenFile("config.toml", os.O_RDONLY, 0644)
-	data, err := os.ReadFile("config.toml")
+	data, err := os.ReadFile(f)
 	if err != nil {
 		log.Fatal("fail to open config.toml")
 	}
