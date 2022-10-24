@@ -32,6 +32,8 @@ func InitMetrics() {
 func GetHttpHandler() gin.HandlerFunc {
 	h := promhttp.Handler()
 	return func(ctx *gin.Context) {
+		StreamClientTotalGauge.WithLabelValues("").Set(1)
+		StreamActiveTotalGauge.WithLabelValues("").Set(1)
 		h.ServeHTTP(ctx.Writer, ctx.Request)
 	}
 }
