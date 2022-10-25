@@ -14,13 +14,19 @@ import (
 
 const SRS = "srs"
 
-var client naming_client.INamingClient
+type NacosClient struct {
+	config   *yml.SrsExporterConfig
+	client   naming_client.INamingClient
+	metadata map[string]string
+}
 
-func InitClient(nacosCfg yml.NacosConfig) {
+func InitClient(cfg *yml.SrsExporterConfig) *NacosClient {
+	nacosCfg := cfg.Nacos
 	sl := len(nacosCfg.Servers)
 	if sl < 1 {
 		log.Logger.Fatalln("please config nacos server")
 	}
+	var nacosClient *NacosClient
 
 	var sc []constant.ServerConfig
 	for _, srv := range nacosCfg.Servers {
@@ -46,7 +52,7 @@ func InitClient(nacosCfg yml.NacosConfig) {
 	cc := *constant.NewClientConfig(opts...)
 
 	var err error
-	client, err = clients.NewNamingClient(
+	client, err := clients.NewNamingClient(
 		vo.NacosClientParam{
 			ClientConfig:  &cc,
 			ServerConfigs: sc,
@@ -55,17 +61,27 @@ func InitClient(nacosCfg yml.NacosConfig) {
 	if err != nil {
 		log.Logger.Fatal(err)
 	}
+
+	nacosClient = &NacosClient{
+		client: client,
+		config: cfg,
+	}
+
+	return nacosClient
 }
 
-func RegisterInstance(cfg yml.SrsExporterConfig) {
+func (nc *NacosClient) RegisterInstance() {
+	cfg := nc.config
 	// construct metadata
 	metadata := make(map[string]string)
 	metadata["cluster_mode"] = cfg.Srs.Mode
 	metadata["intranet_host"] = cfg.Srs.Host
 	metadata["metric_host"] = cfg.App.Host
 	metadata["metric_port"] = fmt.Sprintf("%d", cfg.App.Port)
+	// 保存 metadata 副本
+	nc.metadata = metadata
 
-	ok, err := client.RegisterInstance(vo.RegisterInstanceParam{
+	ok, err := nc.client.RegisterInstance(vo.RegisterInstanceParam{
 		Ip:          cfg.Srs.Domain,
 		Port:        cfg.Srs.RtmpPort,
 		ServiceName: SRS,
@@ -78,37 +94,45 @@ func RegisterInstance(cfg yml.SrsExporterConfig) {
 	})
 
 	if err != nil {
-		log.Logger.Error(err)
+		log.Logger.Error("fail to register instance", err)
 	}
 
 	if ok {
-		log.Logger.Info("Register to nacos successfully")
+		log.Logger.Info("register to nacos successfully")
 	}
 }
 
 // 检查 SRS 是否存活
-func CheckInstance(cfg *yml.SrsExporterConfig) {
+func (nc *NacosClient) CheckInstance() {
+	cfg := nc.config
 	url := fmt.Sprintf("http://%s:%d/api/v1/summaries", cfg.Srs.Host, cfg.Srs.HttpPort)
 	res, err := http.Get(url)
 
 	if err != nil {
-		log.Logger.Error(err)
+		log.Logger.Error("fail to reach srs server", err)
+		return
 	}
 
 	if res != nil && http.StatusOK == res.StatusCode {
-		log.Logger.Info("srs is online")
-		// TODO 检查是否要重新注册
-		// 1. Get Instance to check healthy
-
-		// 2. If not healthy, redo register
+		nc.client.UpdateInstance(vo.UpdateInstanceParam{
+			Ip:          cfg.Srs.Domain,
+			Port:        cfg.Srs.RtmpPort,
+			ServiceName: SRS,
+			Weight:      10,
+			Enable:      true,
+			Ephemeral:   true,
+			GroupName:   cfg.Nacos.GroupName,
+			Metadata:    nc.metadata,
+		})
+		log.Logger.Info("srs is still online, update nacos registration")
 	} else {
-		log.Logger.Error("srs is not healthy, deregister it")
-		client.DeregisterInstance(vo.DeregisterInstanceParam{
+		nc.client.DeregisterInstance(vo.DeregisterInstanceParam{
 			Ip:          cfg.Srs.Domain,
 			Port:        cfg.Srs.RtmpPort,
 			ServiceName: SRS,
 			Ephemeral:   true,
 			GroupName:   cfg.Nacos.GroupName,
 		})
+		log.Logger.Error("srs is not healthy, deregister it")
 	}
 }

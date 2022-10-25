@@ -2,54 +2,58 @@ package prom
 
 import (
 	"fmt"
+	"io"
 
 	"net/http"
+
+	"github.com/azusachino/srs-exporter/internal/log"
 	"github.com/azusachino/srs-exporter/internal/yml"
 	"github.com/gin-gonic/gin"
+	"github.com/goccy/go-json"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const STREAM_URL = "/api/v1/streams"
-const SUMMARY_URL = "/api/v1/summaries"
+const STREAM_URL = "api/v1/streams"
+const SUMMARY_URL = "api/v1/summaries"
 
 type StreamResponse struct {
-	code    int16
-	server  string
-	clients []StreamStatus
+	Code    int16          `json:"code"`
+	Server  string         `json:"server"`
+	Streams []StreamStatus `json:"streams"`
 }
 
 type StreamStatus struct {
-	clients   uint32
-	frames    uint32
-	sendBytes uint32
-	recvBytes uint32
-	liveMs    uint64
-	id        string
-	name      string
-	vhost     string
-	app       string
+	Clients   uint32 `json:"clients"`
+	Frames    uint32 `json:"frames"`
+	SendBytes uint32 `json:"send_bytes"`
+	RecvBytes uint32 `json:"recv_bytes"`
+	LiveMs    uint64 `json:"live_ms"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Vhost     string `json:"vhost"`
+	App       string `json:"app"`
 }
 
 type SummaryResponse struct {
-	code   int16
-	server string
-	data   SummaryData
+	Code   int16       `json:"code"`
+	Server string      `json:"server"`
+	Data   SummaryData `json:"data"`
 }
 
 type SummaryData struct {
-	ok    bool
-	nowMs uint64
-	self  SelfStatus
+	Ok    bool       `json:"ok"`
+	NowMs uint64     `json:"now_ms"`
+	Self  SelfStatus `json:"self"`
 }
 
 type SelfStatus struct {
-	memPercent float64
-	cpuPercent float64
+	MemPercent float64 `json:"mem_percent"`
+	CpuPercent float64 `json:"cpu_percent"`
 }
 
 type PromClient struct {
-	srsConfig *yml.SrsConfig
+	srsConfig         *yml.SrsConfig
 	streamActiveTotal prometheus.Gauge
 	streamClientTotal prometheus.Gauge
 	memPercent        prometheus.Gauge
@@ -59,20 +63,66 @@ type PromClient struct {
 func (pc *PromClient) collectStreamMetrics() {
 	url := fmt.Sprintf("http://%s:%d/%s", pc.srsConfig.Host, pc.srsConfig.HttpPort, STREAM_URL)
 	res, err := http.Get(url)
-	if err != nil {
 
+	if err != nil {
+		log.Logger.Error("failed to reach srs server")
+		return
 	}
+
 	defer res.Body.Close()
 
-	
+	body, err := io.ReadAll(res.Body)
+	// fail to read response
+	if err != nil {
+		panic(err.Error())
+	}
+
+	var sr StreamResponse
+	json.Unmarshal(body, &sr)
+	ln := len(sr.Streams)
+	if ln > 0 {
+		pc.streamActiveTotal.Set(float64(ln))
+		var cnt uint32 = 0
+		for _, st := range sr.Streams {
+			cnt += st.Clients
+		}
+		pc.streamClientTotal.Set(float64(cnt))
+	} else {
+		pc.streamActiveTotal.Set(0)
+		pc.streamClientTotal.Set(0)
+	}
 }
 
 func (pc *PromClient) collectSummaryMetrics() {
+	url := fmt.Sprintf("http://%s:%d/%s", pc.srsConfig.Host, pc.srsConfig.HttpPort, SUMMARY_URL)
+	res, err := http.Get(url)
 
+	if err != nil {
+		log.Logger.Error("failed to reach srs server")
+		return
+	}
+
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	// fail to read response
+	if err != nil {
+		panic(err.Error())
+	}
+
+	var sr SummaryResponse
+	err = json.Unmarshal(body, &sr)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	pc.cpuPercent.Set(sr.Data.Self.CpuPercent)
+	pc.memPercent.Set(sr.Data.Self.MemPercent)
 }
 
 var promClient *PromClient
 
+// 初始化 promClient
 func InitMetrics(srsConfig *yml.SrsConfig) {
 	promClient = &PromClient{
 		srsConfig: srsConfig,
@@ -99,6 +149,7 @@ func GetHttpHandler() gin.HandlerFunc {
 	h := promhttp.Handler()
 
 	return func(ctx *gin.Context) {
+		// 每次抓取的时候，设置新的值
 		promClient.collectStreamMetrics()
 		promClient.collectSummaryMetrics()
 		h.ServeHTTP(ctx.Writer, ctx.Request)
