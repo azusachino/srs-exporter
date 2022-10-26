@@ -1,6 +1,8 @@
 /data
 /target
-/example
+/examples
+/http
+/vendor
 .gitignore
 Cargo.lock
 LICENSE
