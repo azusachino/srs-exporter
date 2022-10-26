@@ -62,13 +62,13 @@ func main() {
 	// 5. goroutine to check srs status (deregister)
 	go func(config *yml.SrsExporterConfig) {
 		for {
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 			nc.CheckInstance()
 		}
 	}(&cfg)
 
 	// 6. start gin server
 	addr := fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port)
-	log.Logger.Info("srs-exporter started in %s", addr)
+	log.Logger.Info("srs-exporter started in ", addr)
 	srv.Run(addr)
 }

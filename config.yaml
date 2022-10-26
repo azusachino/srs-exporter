@@ -3,10 +3,10 @@ app:
   port: 9717
 srs:
   mode: edge
-  domain: localhost
-  rtmpPort: 1935
-  host: localhost
-  httpPort: 1985
+  domain: 172.31.103.161
+  rtmpPort: 8935
+  host: 172.31.103.161
+  httpPort: 8985
 nacos:
   servers:
     - host: 172.31.103.161

@@ -110,7 +110,6 @@ func (nc *NacosClient) CheckInstance() {
 
 	if err != nil {
 		log.Logger.Error("fail to reach srs server", err)
-		return
 	}
 
 	if res != nil && http.StatusOK == res.StatusCode {
@@ -124,7 +123,7 @@ func (nc *NacosClient) CheckInstance() {
 			GroupName:   cfg.Nacos.GroupName,
 			Metadata:    nc.metadata,
 		})
-		log.Logger.Info("srs is still online, update nacos registration")
+		log.Logger.Info("srs is online, update nacos registration")
 	} else {
 		nc.client.DeregisterInstance(vo.DeregisterInstanceParam{
 			Ip:          cfg.Srs.Domain,
