@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/azusachino/srs-exporter/internal/log"
@@ -28,6 +30,14 @@ func init() {
 }
 
 func main() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		fmt.Println("SIGINT or SIGTERM received, exit...")
+		os.Exit(1)
+	}()
 
 	err = log.InitLogrus()
 	if err != nil {
@@ -36,7 +46,7 @@ func main() {
 	}
 
 	// 0. load the config
-	log.Logger.Infof("config location: %s \n", cfgFile)
+	log.Logger.Info("config location: ", cfgFile)
 	cfg := yml.GetCfg(cfgFile)
 
 	// 1. release the beast (server)
@@ -68,7 +78,6 @@ func main() {
 	}(&cfg)
 
 	// 6. start gin server
-	addr := fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port)
-	log.Logger.Info("srs-exporter started in ", addr)
-	srv.Run(addr)
+	log.Logger.Info("srs-exporter started in ", fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port))
+	srv.Run(fmt.Sprintf(":%d", cfg.App.Port))
 }

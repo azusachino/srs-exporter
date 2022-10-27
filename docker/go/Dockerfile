@@ -1,18 +1,5 @@
 FROM golang:1.18 as builder
-LABEL maintainer="az <azusachino@yahoo.com>"
-
-# Create new user
-ENV USER=srs
-ENV UID=10001
-
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}"
+LABEL maintainer="az <azusachino@duck.com>"
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -26,17 +13,13 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o srs_exporter .
 
 # setup running environment
-FROM alpine:3.13
-# replace mirror at first
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --update --no-cache ca-certificates
+FROM debian:stable-slim
 
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
+ENV PORT=9717
 
 WORKDIR /srs
 
 COPY --from=builder /app/srs_exporter .
 
-USER srs:srs
+EXPOSE $PORT
 CMD ["/srs/srs_exporter"]
