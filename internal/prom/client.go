@@ -121,9 +121,11 @@ func (pc *PromClient) collectSummaryMetrics() {
 }
 
 var promClient *PromClient
+var r *prometheus.Registry
 
 // 初始化 promClient
 func InitMetrics(srsConfig *yml.SrsConfig) {
+	r = prometheus.NewRegistry()
 	promClient = &PromClient{
 		srsConfig: srsConfig,
 		streamActiveTotal: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -143,11 +145,12 @@ func InitMetrics(srsConfig *yml.SrsConfig) {
 			Help: "Cpu usage percent of SRS",
 		}),
 	}
+	r.MustRegister(promClient.streamActiveTotal,
+		promClient.streamClientTotal, promClient.memPercent, promClient.cpuPercent)
 }
 
 func GetHttpHandler() gin.HandlerFunc {
-	h := promhttp.Handler()
-
+	h := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
 	return func(ctx *gin.Context) {
 		// 每次抓取的时候，设置新的值
 		promClient.collectStreamMetrics()
