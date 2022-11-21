@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"net/http"
-
-	"github.com/azusachino/srs-exporter/internal/log"
+	"github.com/azusachino/srs-exporter/internal/request"
 	"github.com/azusachino/srs-exporter/internal/yml"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
@@ -62,10 +60,9 @@ type PromClient struct {
 
 func (pc *PromClient) collectStreamMetrics() {
 	url := fmt.Sprintf("http://%s:%d/%s", pc.srsConfig.Host, pc.srsConfig.HttpPort, STREAM_URL)
-	res, err := http.Get(url)
+	res, err := request.Get(url)
 
 	if err != nil {
-		log.Logger.Error("failed to reach srs server")
 		return
 	}
 
@@ -95,10 +92,9 @@ func (pc *PromClient) collectStreamMetrics() {
 
 func (pc *PromClient) collectSummaryMetrics() {
 	url := fmt.Sprintf("http://%s:%d/%s", pc.srsConfig.Host, pc.srsConfig.HttpPort, SUMMARY_URL)
-	res, err := http.Get(url)
+	res, err := request.Get(url)
 
 	if err != nil {
-		log.Logger.Error("failed to reach srs server")
 		return
 	}
 

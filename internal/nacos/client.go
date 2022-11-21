@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/azusachino/srs-exporter/internal/log"
+	"github.com/azusachino/srs-exporter/internal/request"
 	"github.com/azusachino/srs-exporter/internal/yml"
 	"github.com/nacos-group/nacos-sdk-go/clients"
 	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
@@ -106,11 +107,8 @@ func (nc *NacosClient) RegisterInstance() {
 func (nc *NacosClient) CheckInstance() {
 	cfg := nc.config
 	url := fmt.Sprintf("http://%s:%d/api/v1/summaries", cfg.Srs.Host, cfg.Srs.HttpPort)
-	res, err := http.Get(url)
 
-	if err != nil {
-		log.Logger.Error("fail to reach srs server", err)
-	}
+	res, _ := request.Get(url)
 
 	if res != nil && http.StatusOK == res.StatusCode {
 		nc.client.UpdateInstance(vo.UpdateInstanceParam{
