@@ -108,9 +108,9 @@ func (nc *NacosClient) CheckInstance() {
 	cfg := nc.config
 	url := fmt.Sprintf("http://%s:%d/api/v1/summaries", cfg.Srs.Host, cfg.Srs.HttpPort)
 
-	res, _ := request.Get(url)
+	statusCode, body, _ := request.Get(url)
 
-	if res != nil && http.StatusOK == res.StatusCode {
+	if body != nil && http.StatusOK == statusCode {
 		nc.client.UpdateInstance(vo.UpdateInstanceParam{
 			Ip:          cfg.Srs.Domain,
 			Port:        cfg.Srs.RtmpPort,

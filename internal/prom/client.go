@@ -2,7 +2,6 @@ package prom
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/azusachino/srs-exporter/internal/request"
 	"github.com/azusachino/srs-exporter/internal/yml"
@@ -60,16 +59,8 @@ type PromClient struct {
 
 func (pc *PromClient) collectStreamMetrics() {
 	url := fmt.Sprintf("http://%s:%d/%s", pc.srsConfig.Host, pc.srsConfig.HttpPort, STREAM_URL)
-	res, err := request.Get(url)
 
-	if err != nil {
-		return
-	}
-
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	// fail to read response
+	_, body, err := request.Get(url)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -92,16 +83,8 @@ func (pc *PromClient) collectStreamMetrics() {
 
 func (pc *PromClient) collectSummaryMetrics() {
 	url := fmt.Sprintf("http://%s:%d/%s", pc.srsConfig.Host, pc.srsConfig.HttpPort, SUMMARY_URL)
-	res, err := request.Get(url)
+	_, body, err := request.Get(url)
 
-	if err != nil {
-		return
-	}
-
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	// fail to read response
 	if err != nil {
 		panic(err.Error())
 	}

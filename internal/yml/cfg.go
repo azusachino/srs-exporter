@@ -44,7 +44,7 @@ type HostPort struct {
 func GetCfg(f string) SrsExporterConfig {
 	data, err := os.ReadFile(f)
 	if err != nil {
-		log.Logger.Fatal("fail to open config.toml")
+		log.Logger.Fatal("fail to open config file")
 	}
 	var cfg SrsExporterConfig
 	err = yaml.Unmarshal(data, &cfg)
